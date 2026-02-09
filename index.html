@@ -1,0 +1,4360 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>時の川 - 四季の回廊</title>
+
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&display=swap"
+        rel="stylesheet">
+
+
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050510;
+            font-family: 'Shippori Mincho', serif;
+            color: #fff;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+
+            filter: contrast(1.1) saturate(1.1);
+        }
+
+
+        #ui-layer {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            z-index: 10;
+            pointer-events: none;
+            mix-blend-mode: plus-lighter;
+            text-align: right;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            height: auto;
+        }
+
+        h1 {
+            font-weight: 500;
+            font-size: 2.5rem;
+            letter-spacing: 0.8rem;
+            margin: 0;
+            margin-left: 20px;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+            opacity: 0.9;
+            display: inline-block;
+            border-right: 1px solid rgba(255, 255, 255, 0.3);
+            padding-right: 20px;
+        }
+
+        #status-text {
+            font-size: 1.1rem;
+            letter-spacing: 0.4rem;
+            color: rgba(255, 255, 255, 0.8);
+            display: inline-block;
+            vertical-align: top;
+            margin-right: 15px;
+            line-height: 2;
+        }
+
+
+        #controls {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            z-index: 20;
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            width: 95%;
+            flex-wrap: wrap;
+            padding: 20px;
+            transition: transform 0.4s ease, opacity 0.4s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #controls.visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .hud-btn {
+            background: rgba(5, 5, 10, 0.3);
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.6);
+            padding: 6px 10px;
+            font-family: 'Shippori Mincho', serif;
+            font-size: 0.8rem;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            letter-spacing: 0.05rem;
+            min-width: 70px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border-radius: 2px;
+        }
+
+        .hud-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, rgba(255, 255, 255, 0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+
+        .hud-btn:hover {
+            color: rgba(255, 255, 255, 0.9);
+            border-bottom-color: rgba(255, 255, 255, 0.4);
+            background: rgba(10, 10, 20, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .hud-btn:hover::before {
+            opacity: 1;
+        }
+
+        .hud-btn.active {
+            border-bottom-color: #fff;
+            color: #fff;
+        }
+
+
+        .season-spring {
+            border-bottom-color: #ffc0cb;
+        }
+
+        .season-rain {
+            border-bottom-color: #aaddff;
+        }
+
+        .season-summer {
+            border-bottom-color: #00ffff;
+        }
+
+        .season-autumn {
+            border-bottom-color: #ffaa00;
+        }
+
+        .season-winter {
+            border-bottom-color: #ffffff;
+        }
+
+        .separator {
+            width: 1px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            margin: 0 5px;
+        }
+
+
+        #season-selector {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 50;
+            display: none;
+
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #season-selector.visible {
+            opacity: 1;
+        }
+
+        .modal-content {
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 40px;
+            background: rgba(20, 20, 30, 0.6);
+            border-radius: 4px;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            letter-spacing: 0.3rem;
+            font-weight: 500;
+        }
+
+        .season-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .modal-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 15px 20px;
+            font-family: 'Shippori Mincho', serif;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .modal-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #fff;
+        }
+
+        .btn-cancel {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            letter-spacing: 0.1rem;
+        }
+
+        .btn-cancel:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+        #multi-image-modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+            z-index: 250;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        #multi-image-modal.visible { opacity: 1; }
+        .image-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            max-width: 90%;
+            max-height: 60vh;
+            overflow-y: auto;
+            justify-content: center;
+            padding: 20px;
+        }
+        .image-item {
+            position: relative;
+        }
+        .delete-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #ff4444;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 24px;
+            text-align: center;
+            z-index: 10;
+            transition: background 0.2s;
+        }
+        .delete-btn:hover {
+            background: #ff0000;
+        }
+        .image-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .image-item img {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 2px;
+        }
+        .image-item select {
+            margin-top: 8px;
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.5);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 2px;
+            font-family: 'Shippori Mincho', serif;
+        }
+        .modal-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 20px;
+        }
+        .setup-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 1.5s ease-out;
+        }
+
+        .loader-text {
+            margin-top: 30px;
+            font-weight: 400;
+            letter-spacing: 0.8rem;
+            font-size: 1.0rem;
+            color: rgba(255, 255, 255, 0.6);
+            animation: breathe 3s infinite ease-in-out;
+            border-right: 1px solid rgba(255, 255, 255, 0.3);
+            padding-right: 10px;
+        }
+
+        #input-video {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 320px;
+            height: 240px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @keyframes breathe {
+
+            0%,
+            100% {
+                opacity: 0.3;
+            }
+
+            50% {
+                opacity: 0.8;
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+                letter-spacing: 0.5rem;
+            }
+
+            #ui-layer {
+                top: 20px;
+                right: 20px;
+            }
+
+            #controls {
+                bottom: 20px;
+                gap: 8px;
+            }
+
+            .hud-btn {
+                padding: 6px 8px;
+                font-size: 0.75rem;
+                min-width: 60px;
+            }
+
+            .separator {
+                display: none;
+            }
+
+            .season-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 16, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            opacity: 1;
+            transition: opacity 1.0s ease;
+            color: #fff;
+            text-align: center;
+        }
+
+        #start-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .screen-content {
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .screen-content h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            border: none;
+            display: block;
+            text-align: center;
+        }
+
+        .screen-content p {
+            font-size: 1.2rem;
+            margin-bottom: 3rem;
+            letter-spacing: 0.5rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .upload-group {
+            margin: 20px 0;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
+        .upload-group label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .upload-group span {
+            font-size: 1.1rem;
+            letter-spacing: 0.2rem;
+        }
+
+        .status-badge {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .status-badge.active {
+            color: #a0f0ff;
+        }
+
+        .start-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: #fff;
+            padding: 15px 60px;
+            font-family: 'Shippori Mincho', serif;
+            font-size: 1.5rem;
+            margin-top: 40px;
+            cursor: pointer;
+            transition: all 0.5s;
+            letter-spacing: 0.5rem;
+        }
+
+        .start-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #fff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .season-btn {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px 0;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.05);
+            font-family: 'Shippori Mincho', serif;
+        }
+
+        .season-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .season-btn.spring,
+        .season-btn.rain,
+        .season-btn.summer,
+        .season-btn.autumn,
+        .season-btn.winter {
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+            color: #eaeaea;
+        }
+
+
+        .season-btn.spring.uploaded {
+            background: rgba(255, 192, 203, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .season-btn.rain.uploaded {
+            background: rgba(170, 221, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .season-btn.summer.uploaded {
+            background: rgba(0, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .season-btn.autumn.uploaded {
+            background: rgba(255, 170, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .season-btn.winter.uploaded {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+
+<body>
+
+    <div id="start-screen">
+        <div class="screen-content">
+            <h1>時の川、四季の回廊</h1>
+            <p style="margin-bottom: 30px;">記憶を辿る旅へ</p>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 30px;">
+                <label class="setup-btn" style="display: flex; align-items: center; gap: 12px; padding: 15px 25px; background: rgba(255,238,176,0.1); border: 1px solid rgba(255,238,176,0.3); border-radius: 4px; cursor: pointer; transition: all 0.3s;">
+                    <span style="font-size: 1.5rem;">📷</span>
+                    <div style="text-align: left;">
+                        <div style="color: #ffeeb0; font-size: 1rem;">想い出の写真/動画を追加</div>
+                        <div id="photo-count-display" style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">最大6枚まで</div>
+                    </div>
+                    <input type="file" accept="image/*,video/mp4,video/webm" multiple style="display: none;" onchange="app.handleMultiImageUpload(this)">
+                </label>
+
+                <label class="setup-btn" style="display: flex; align-items: center; gap: 12px; padding: 15px 25px; background: rgba(160,240,255,0.1); border: 1px solid rgba(160,240,255,0.3); border-radius: 4px; cursor: pointer; transition: all 0.3s;">
+                    <span style="font-size: 1.5rem;">🎵</span>
+                    <div style="text-align: left;">
+                        <div style="color: #a0f0ff;">BGM設定</div>
+                        <div id="bgm-count-display" style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">未設定</div>
+                    </div>
+                    <input type="file" accept="audio/*" style="display: none;" onchange="app.handleStartBGMUpload(this)">
+                </label>
+            </div>
+
+            <button class="start-btn" onclick="app.startTour()">物語を始める</button>
+        </div>
+    </div>
+
+    <div id="loading">
+        <div
+            style="width: 60px; height: 60px; border: 1px solid rgba(255,255,255,0.1); border-top: 1px solid rgba(255,255,255,0.8); border-radius: 50%; animation: spin 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;">
+        </div>
+        <div class="loader-text">川を下っています</div>
+    </div>
+    <style>
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
+    <div id="ui-layer">
+        <h1>時の川、四季の回廊</h1>
+        <div id="status-text">
+            春、あけぼの。<br>
+            ゆったりと流れる
+        </div>
+    </div>
+
+
+    <div id="season-selector">
+        <div class="modal-content">
+            <div class="modal-title">どの季節に飾りますか？</div>
+            <div class="season-grid">
+                <button class="modal-btn" onclick="app.placePhoto('spring')">春</button>
+                <button class="modal-btn" onclick="app.placePhoto('rain')">梅雨</button>
+                <button class="modal-btn" onclick="app.placePhoto('summer')">夏</button>
+                <button class="modal-btn" onclick="app.placePhoto('autumn')">秋</button>
+                <button class="modal-btn" onclick="app.placePhoto('winter')">冬</button>
+            </div>
+            <button class="btn-cancel" onclick="app.closeSeasonSelector()">キャンセル</button>
+        </div>
+    </div>
+
+    <div id="controls">
+        <button class="hud-btn active" id="btn-cruise" onclick="app.togglePause()">停</button>
+        <button class="hud-btn" id="btn-speed" onclick="app.changeSpeed()">速:一</button>
+
+        <div class="separator"></div>
+
+        <button class="hud-btn" onclick="app.warpTo('spring')" title="春へ">桜</button>
+        <button class="hud-btn" onclick="app.warpTo('rain')" title="梅雨へ">五月雨</button>
+        <button class="hud-btn" onclick="app.warpTo('summer')" title="夏へ">花火</button>
+        <button class="hud-btn" onclick="app.warpTo('autumn')" title="秋へ">月見</button>
+        <button class="hud-btn" onclick="app.warpTo('winter')" title="冬へ">聖夜</button>
+
+        <div class="separator"></div>
+
+
+        <button class="hud-btn" id="btn-face" onclick="app.toggleViewControl()" title="マウスで視線を操作">視点操作:OFF</button>
+        <button class="hud-btn" onclick="app.backToTitle()" title="タイトルへ戻る">タイトル</button>
+    </div>
+
+    <div id="multi-image-modal">
+        <div class="modal-content">
+            <div class="modal-title">写真/動画を季節に振り分け</div>
+            <div id="modal-image-count" style="color: rgba(255,255,255,0.6); margin-bottom: 10px;">0 / 6 枚</div>
+            <div class="image-list" id="image-list"></div>
+            <div class="modal-actions">
+                <button class="modal-btn" onclick="app.placeAllPhotos()">配置する</button>
+                <button class="btn-cancel" onclick="app.closeMultiImageModal()">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+
+
+
+
+
+    <script type="x-shader/x-vertex" id="vs-spring">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aScale;
+        attribute vec3 aRandom;
+        attribute vec3 aColor; 
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            vec3 pos = position;
+            
+            // 1. 桜並木の揺らぎ (Tree Sway)
+            if (pos.y > 5.0) {
+                float wind = sin(uTime * 1.0 + pos.x * 0.05 + pos.z * 0.05);
+                float swayAmount = (pos.y - 5.0) * 0.05;
+                pos.x += wind * swayAmount;
+                pos.z += cos(uTime * 0.8) * swayAmount * 0.5;
+            }
+
+            // 2. 花筏 (River Flow)
+            if (pos.y < 5.0 && pos.y > -5.0) {
+                float flowSpeed = 10.0 + aRandom.x * 5.0;
+                float zLoop = 400.0;
+                float zOffset = mod(uTime * flowSpeed, zLoop);
+                pos.z -= zOffset;
+                if (pos.z < -200.0) pos.z += zLoop;
+                pos.y += sin(uTime * 2.0 + pos.x * 0.1) * 0.5;
+                float vortex = sin(uTime * 0.5 + pos.z * 0.01) * 5.0;
+                pos.x += vortex * aRandom.y;
+            }
+
+            // 3. 舞い散る花びら (Falling Petals)
+            if (aRandom.z > 0.85) {
+                float fallSpeed = 5.0 + aRandom.y * 5.0;
+                float yLoop = 80.0;
+                float yOffset = mod(uTime * fallSpeed, yLoop);
+                pos.y = 80.0 - yOffset;
+                pos.x += sin(uTime + pos.y * 0.1) * 10.0;
+                pos.z += cos(uTime + pos.y * 0.1) * 5.0;
+            }
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            float dist = length(mvPosition.xyz);
+            
+            gl_PointSize = aScale * uPixelRatio * (300.0 / dist);
+            gl_Position = projectionMatrix * mvPosition;
+
+            vec3 finalColor = aColor;
+            float sunHighlight = max(0.0, sin(uTime * 0.5 + pos.x * 0.1));
+            finalColor += vec3(0.2, 0.2, 0.1) * sunHighlight;
+
+            vColor = finalColor;
+            
+            float fogDist = abs(mvPosition.z);
+            vAlpha = 1.0 - smoothstep(100.0, 300.0, fogDist);
+            vAlpha *= 0.9;
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-rain">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        uniform float uBoatZ; // 季節遷移用
+        attribute float aScale;
+        attribute vec3 aRandom;
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vDropType;
+
+        void main() {
+            vec3 pos = position;
+            
+            // 柔らかな落下アニメーション
+            float speed = 8.0 + aRandom.x * 6.0;
+            float t = uTime * speed;
+            
+            // 縦方向のゆったりした流れ
+            pos.y = mod(pos.y - t, 180.0) - 30.0;
+            
+            // 風に揺れるような柔らかな動き
+            float sway = sin(uTime * 0.5 + pos.y * 0.02 + aRandom.y * 6.28) * 3.0;
+            pos.x += sway;
+            pos.z += cos(uTime * 0.4 + aRandom.z * 6.28) * 2.0;
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            
+            // 水滴のサイズ (細長い雨粒)
+            float baseSize = 8.0 + aRandom.x * 12.0;
+            gl_PointSize = aScale * baseSize * uPixelRatio * (120.0 / -mvPosition.z);
+            gl_Position = projectionMatrix * mvPosition;
+
+            // --- 季節色遷移 ---
+            // RAIN: -400 -> SUMMER: -750
+            float z = uBoatZ;
+            float transition = smoothstep(-350.0, -700.0, z); // 0(Rain) -> 1(Summer)
+            
+            // 1. 紫陽花カラー (Blue/Purple/Pink mix)
+            vec3 cBlue = vec3(0.3, 0.5, 1.0);
+            vec3 cPink = vec3(0.8, 0.4, 0.9);
+            vec3 cBaseRain = mix(cBlue, cPink, aRandom.z); // 青とピンクの混合
+
+            // 2. 新緑カラー (Green)
+            vec3 cGreen = vec3(0.4, 0.9, 0.3);
+            
+            // 3. 夏/ひまわりカラー (Yellow/Gold)
+            vec3 cYellow = vec3(1.0, 0.9, 0.2);
+
+            vec3 finalColor;
+            if (transition < 0.5) {
+                // 紫陽花 -> 緑
+                finalColor = mix(cBaseRain, cGreen, transition * 2.0);
+            } else {
+                // 緑 -> 黄色
+                finalColor = mix(cGreen, cYellow, (transition - 0.5) * 2.0);
+            }
+            
+            // 高さによる輝度変化（既存ロジックの名残で少し残す）
+            float heightNorm = (pos.y + 30.0) / 180.0;
+            finalColor += 0.2 * heightNorm; // 上の方が明るい
+
+            vColor = finalColor;
+            vAlpha = 0.25 + aRandom.y * 0.15; // 優しい透明感
+            vDropType = aRandom.x; // 滴のバリエーション用
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-rain-splash">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aScale;
+        attribute vec3 aRandom;
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            vec3 pos = position;
+            float speed = 2.0 + aRandom.y * 2.0;
+            float life = mod(uTime * speed + aRandom.x * 10.0, 1.0);
+            pos.y = -10.0;
+            
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            float size = aScale * (1.0 + life * 5.0); 
+            gl_PointSize = size * uPixelRatio * (150.0 / -mvPosition.z);
+            gl_Position = projectionMatrix * mvPosition;
+
+            vec3 cWater = vec3(0.5, 0.8, 1.0);
+            vColor = cWater;
+            vAlpha = (1.0 - life) * 0.6;
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-fireworks">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute vec3 aDir;
+        attribute float aOffset;
+        attribute float aScale;
+        attribute float aSpeed;
+        attribute float aDecay;
+        
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            // しだれ柳の挙動: 爆発 -> 減速(空気抵抗) -> 垂れ下がり(重力) -> 消滅
+            float loopDuration = 5.0;
+            float time = mod(uTime + aOffset, loopDuration);
+            float t = time;
+            
+            // 1. 初速による広がり (指数関数的に減速 = 空気抵抗)
+            float resistance = 2.5;
+            float explosion = (aSpeed * 50.0) * (1.0 - exp(-resistance * t));
+            
+            // 2. 重力落下 (t^2 で加速)
+            float gravity = 12.0 * t * t;
+            
+            // 位置計算
+            vec3 pos = aDir * explosion;
+            pos.y -= gravity;
+            
+            // 中心位置オフセット (打ち上げ高さ)
+            pos.y += 100.0; 
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            
+            // サイズ: 落ちるにつれて少し小さくなる
+            float progress = t / loopDuration;
+            float size = aScale * 6.0 * (1.0 - progress * 0.5);
+            gl_PointSize = size * uPixelRatio * (400.0 / -mvPosition.z);
+            if (gl_PointSize < 2.0) gl_PointSize = 0.0;
+
+            gl_Position = projectionMatrix * mvPosition;
+
+            // 色彩変化: 花火ごとにカラフルなパターン
+            float colorType = mod(aOffset * 7.0, 6.0);
+            
+            vec3 cStart, cMid, cEnd;
+            if (colorType < 1.0) {
+                // 金色系
+                cStart = vec3(1.0, 1.0, 1.0);
+                cMid = vec3(1.0, 0.8, 0.2);
+                cEnd = vec3(1.0, 0.4, 0.1);
+            } else if (colorType < 2.0) {
+                // 青系
+                cStart = vec3(0.8, 0.9, 1.0);
+                cMid = vec3(0.3, 0.6, 1.0);
+                cEnd = vec3(0.1, 0.2, 0.8);
+            } else if (colorType < 3.0) {
+                // 緑系
+                cStart = vec3(0.9, 1.0, 0.9);
+                cMid = vec3(0.2, 1.0, 0.4);
+                cEnd = vec3(0.1, 0.6, 0.2);
+            } else if (colorType < 4.0) {
+                // ピンク/マゼンタ系
+                cStart = vec3(1.0, 0.9, 1.0);
+                cMid = vec3(1.0, 0.4, 0.8);
+                cEnd = vec3(0.8, 0.1, 0.5);
+            } else if (colorType < 5.0) {
+                // 紫系
+                cStart = vec3(0.9, 0.8, 1.0);
+                cMid = vec3(0.6, 0.3, 1.0);
+                cEnd = vec3(0.3, 0.1, 0.6);
+            } else {
+                // 赤系
+                cStart = vec3(1.0, 1.0, 0.9);
+                cMid = vec3(1.0, 0.3, 0.2);
+                cEnd = vec3(0.6, 0.1, 0.05);
+            }
+            
+            vec3 color;
+            if (t < 0.3) {
+                color = mix(cStart, cMid, t / 0.3);
+            } else if (t < 2.5) {
+                color = mix(cMid, cEnd, (t - 0.3) / 2.2);
+            } else {
+                color = mix(cEnd, cEnd * 0.3, (t - 2.5) / 2.5);
+            }
+
+            // 明滅 (Twinkle) - しだれ柳らしいキラキラ
+            float twinkle = sin(t * 25.0 + aOffset * 80.0);
+            if (twinkle > 0.3) color *= 1.6;
+            else if (twinkle < -0.3) color *= 0.4;
+
+            vColor = color;
+            
+            // フェードアウト
+            float alpha = 1.0 - smoothstep(loopDuration - 1.5, loopDuration, time);
+            // 水面下に行ったら消す
+            if (pos.y < -15.0) alpha = 0.0;
+            
+            vAlpha = alpha;
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-comet">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute vec3 aDir;
+        attribute float aOffset;
+        attribute float aScale;
+        attribute float aSpeed;
+        
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            // 彗星花火: 斜め上に打ち上がり、尾を引く
+            float loopDuration = 4.0;
+            float time = mod(uTime + aOffset, loopDuration);
+            float t = time;
+            
+            // 打ち上げ軌道 (放物線)
+            float speed = aSpeed * 80.0;
+            vec3 pos = aDir * speed * t;
+            
+            // 重力で減速・落下
+            pos.y += 60.0 * t - 30.0 * t * t;
+            
+            // 横方向の広がり（扇形）
+            pos.x += sin(t * 3.0 + aOffset * 10.0) * 5.0;
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            
+            // サイズ: 先端は大きく、尾は小さく
+            float progress = t / loopDuration;
+            float size = aScale * 4.0 * (1.0 - progress * 0.7);
+            gl_PointSize = size * uPixelRatio * (350.0 / -mvPosition.z);
+            if (gl_PointSize < 1.5) gl_PointSize = 0.0;
+
+            gl_Position = projectionMatrix * mvPosition;
+
+            // 色: 先端は白熱 → 尾はオレンジ → 赤
+            vec3 cWhite = vec3(1.0, 1.0, 1.0);
+            vec3 cYellow = vec3(1.0, 0.9, 0.3);
+            vec3 cOrange = vec3(1.0, 0.5, 0.1);
+            vec3 cRed = vec3(0.8, 0.2, 0.1);
+            
+            vec3 color;
+            if (t < 0.5) {
+                color = mix(cWhite, cYellow, t * 2.0);
+            } else if (t < 2.0) {
+                color = mix(cYellow, cOrange, (t - 0.5) / 1.5);
+            } else {
+                color = mix(cOrange, cRed, (t - 2.0) / 2.0);
+            }
+
+            // 先端は明るく
+            if (progress < 0.2) color *= 2.0;
+
+            vColor = color;
+            
+            // フェードアウト
+            float alpha = 1.0 - smoothstep(loopDuration - 1.0, loopDuration, time);
+            if (pos.y < -10.0) alpha = 0.0;
+            
+            vAlpha = alpha * 0.9;
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-rising">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aOffset;
+        attribute float aScale;
+        attribute float aSpeed;
+        attribute float aAngle; // 打ち上げ角度
+        
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            // 水星花火: まっすぐ上に線状に打ち上がる
+            float loopDuration = 3.5;
+            float time = mod(uTime + aOffset, loopDuration);
+            float t = time;
+            
+            // 直線的な上昇
+            float speed = aSpeed * 100.0;
+            vec3 pos = vec3(0.0);
+            
+            // 角度に応じて打ち上げ (0=真上)
+            float angle = aAngle;
+            pos.x = sin(angle) * t * speed * 0.3;
+            pos.y = t * speed;
+            pos.z = cos(angle) * t * speed * 0.1;
+            
+            // 重力は弱め (真っ直ぐ上がる感じ)
+            pos.y -= 20.0 * t * t;
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            
+            // サイズ: 尾は細く長く
+            float progress = t / loopDuration;
+            float tailFactor = 1.0 - progress * 0.8;
+            float size = aScale * 2.5 * tailFactor;
+            gl_PointSize = size * uPixelRatio * (300.0 / -mvPosition.z);
+            if (gl_PointSize < 1.0) gl_PointSize = 0.0;
+
+            gl_Position = projectionMatrix * mvPosition;
+
+            // 色: 白熱の先端 → 金色の尾
+            vec3 cWhite = vec3(1.0, 1.0, 0.9);
+            vec3 cGold = vec3(1.0, 0.7, 0.2);
+            vec3 cOrange = vec3(0.9, 0.4, 0.1);
+            
+            vec3 color;
+            if (t < 0.3) {
+                color = cWhite * 2.0; // 先端は白熱
+            } else if (t < 1.5) {
+                color = mix(cWhite, cGold, (t - 0.3) / 1.2);
+            } else {
+                color = mix(cGold, cOrange, (t - 1.5) / 2.0);
+            }
+            
+            vColor = color;
+            vAlpha = 1.0 - smoothstep(2.0, loopDuration, t);
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-fan">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aOffset;
+        attribute float aScale;
+        attribute float aAngle; // 扇の角度
+        attribute float aSpeed;
+        
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            float loopDuration = 4.0;
+            float t = mod(uTime + aOffset, loopDuration);
+            
+            vec3 pos = vec3(0.0);
+            
+            // 放物線運動
+            float speed = aSpeed * 80.0;
+            float rad = aAngle; // 角度 (ラジアン)
+            
+            // X-Y平面で扇状に広がる
+            float vx = sin(rad) * speed;
+            float vy = cos(rad) * speed;
+            
+            pos.x = vx * t;
+            pos.y = vy * t - 30.0 * t * t; // 重力
+            pos.z = 0.0; // 奥行きはほぼ固定
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            
+            // サイズ調整
+            float size = aScale * 3.0 * (1.0 - t / loopDuration);
+            gl_PointSize = size * uPixelRatio * (200.0 / -mvPosition.z);
+            gl_Position = projectionMatrix * mvPosition;
+
+            // 色: シアン〜青のグラデーション
+            vec3 cCyan = vec3(0.2, 0.9, 1.0);
+            vec3 cBlue = vec3(0.1, 0.4, 0.9);
+            vec3 cWhite = vec3(1.0, 1.0, 1.0);
+            
+            if (t < 0.2) vColor = cWhite;
+            else vColor = mix(cCyan, cBlue, t * 0.5);
+            
+            vAlpha = 1.0 - smoothstep(1.5, 3.0, t);
+            if (pos.y < -50.0) vAlpha = 0.0;
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-rocket">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute vec3 aDir;
+        attribute float aOffset;
+        attribute float aScale;
+        attribute float aSpeed;
+        
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            // ロケット花火: 真っ直ぐ不規則に飛び交う
+            // 重力の影響を受けず、高速で直進する
+            float loopDuration = 2.5;
+            float time = mod(uTime + aOffset, loopDuration);
+            float t = time;
+            
+            // 高速直進移動
+            float speed = aSpeed * 150.0;
+            vec3 pos = aDir * speed * t;
+            
+            // 発射位置のばらつき（中心から少しずらす）
+            pos += aDir * 10.0;
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            
+            // サイズ: 一定（光の点）
+            gl_PointSize = aScale * 2.5 * uPixelRatio * (300.0 / -mvPosition.z);
+            if (gl_PointSize < 1.0) gl_PointSize = 0.0;
+
+            gl_Position = projectionMatrix * mvPosition;
+
+            // 色: 白熱 -> シルバー/オレンジ (火花)
+            vec3 cCore = vec3(1.0, 1.0, 1.0);
+            vec3 cSpark = vec3(1.0, 0.8, 0.4);
+            vec3 cTrail = vec3(1.0, 0.4, 0.1);
+            
+            vec3 color;
+            // 点滅 (チカチカする火花)
+            float flash = sin(t * 80.0 + aOffset * 100.0);
+            
+            if (t < 0.2) {
+                color = cCore;
+            } else {
+                color = mix(cSpark, cTrail, t / 2.0);
+            }
+            
+            if (flash > 0.0) color *= 1.5;
+            
+            vColor = color;
+            vAlpha = 1.0 - smoothstep(loopDuration * 0.8, loopDuration, t);
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-smoke">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aScale;
+        attribute vec3 aRandom; // x: speed, y: offset, z: drift
+        varying float vAlpha;
+        varying vec3 vColor;
+
+        void main() {
+            vec3 pos = position;
+            
+            // ゆっくり上昇しながら漂う
+            float speed = 2.0 + aRandom.x * 2.0;
+            float t = uTime * 0.2; // ゆっくり
+            
+            float yOffset = mod(t * speed + aRandom.y * 100.0, 200.0);
+            pos.y += yOffset;
+            
+            // 横風 (Drift)
+            pos.x += sin(t + aRandom.z * 10.0) * 20.0;
+            
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            
+            // 巨大なパーティクル
+            gl_PointSize = aScale * 200.0 * uPixelRatio * (200.0 / -mvPosition.z);
+            gl_Position = projectionMatrix * mvPosition;
+
+            // 色: 煙色 (花火の光を反射)
+            // もっと暗く、環境光のみを反映する感じに
+            vec3 cSmokeBase = vec3(0.2, 0.2, 0.25); // 暗いグレー
+            vec3 cGlow = vec3(0.1, 0.05, 0.15); // ほんのりとした反射
+            
+            vColor = cSmokeBase + cGlow * sin(uTime * 0.5);
+            // 透明度を大幅に下げる (0.15 -> 0.03)
+            vAlpha = 0.03 * (1.0 - yOffset / 200.0); // 上に行くほど薄くなる
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-seaspray">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aScale;
+        attribute vec3 aRandom;
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            vec3 pos = position;
+            
+            float speed = 2.0 + aRandom.x * 2.0;
+            float t = uTime * speed + aRandom.y * 10.0;
+            float bounce = abs(sin(t));
+            pos.y = -10.0 + bounce * 5.0 * aRandom.z; // 高さを抑える
+            
+            float spread = mod(t, 3.14159);
+            pos.x += cos(t) * spread * 2.0;
+            pos.z += sin(t) * spread * 2.0;
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            gl_PointSize = aScale * uPixelRatio * (100.0 / -mvPosition.z);
+            gl_Position = projectionMatrix * mvPosition;
+
+            vec3 cAqua = vec3(0.4, 0.9, 1.0);
+            vec3 cWhite = vec3(1.0, 1.0, 1.0);
+            
+            vColor = mix(cAqua, cWhite, bounce);
+            vAlpha = 0.5 * (1.0 - bounce); // 薄く
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-laser">
+        uniform float uTime;
+        attribute vec3 aDir;
+        attribute float aSide;   // 0:Root, 1:Tip
+        attribute float aOffset;
+        attribute float aScale;  // Length scale
+        attribute vec3 aColor;
+        
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            // レーザービーム: 中心から伸び縮み
+            float loopDuration = 3.0; // 短いサイクル
+            float t = mod(uTime + aOffset, loopDuration);
+            
+            // アニメーション: 急激に伸びて、スッと消える
+            // 0.0 -> 0.1: Expand
+            // 0.1 -> 0.4: Hold
+            // 0.4 -> 0.6: Contract/Fade
+            
+            float len = 0.0;
+            if (t < 0.1) {
+                len = smoothstep(0.0, 0.1, t);
+            } else if (t < 0.4) {
+                len = 1.0;
+            } else if (t < 0.6) {
+                len = 1.0 - smoothstep(0.4, 0.6, t);
+            }
+            
+            // 長さを適用 (aSide=0は中心固定)
+            float beamLen = aScale * 80.0 * len;
+            vec3 pos = aDir * beamLen * aSide;
+            
+            // 重力無視、直線維持
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            gl_Position = projectionMatrix * mvPosition;
+
+            // 色: 高輝度 (Bloom用)
+            // 点滅を加える
+            float flicker = 1.0 + 0.5 * sin(t * 100.0);
+            vColor = aColor * 2.0 * flicker; 
+            
+            vAlpha = smoothstep(0.6, 0.4, t); // フェードアウト
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-tracer">
+        uniform float uTime;
+        attribute vec3 aDir;     // 進行方向
+        attribute float aSide;   // 0:Tail, 1:Head
+        attribute float aOffset;
+        attribute float aSpeed;
+        attribute vec3 aColor;
+        
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            // トレーサー: 移動する線分
+            float loopDuration = 2.5;
+            float t = mod(uTime + aOffset, loopDuration);
+            
+            float speed = aSpeed * 120.0;
+            float dist = speed * t;
+            
+            // 長さ
+            float trailLen = 15.0; 
+            
+            // 位置計算
+            // Head (aSide=1): dist
+            // Tail (aSide=0): dist - trailLen
+            float currentPos = dist - (1.0 - aSide) * trailLen;
+            
+            vec3 pos = aDir * currentPos;
+            
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            gl_Position = projectionMatrix * mvPosition;
+
+            // 色
+            vColor = aColor * 1.5;
+            
+            // 始端と終端のフェード
+            float alpha = 1.0;
+            if (currentPos < 0.0) alpha = 0.0; // 発射前非表示
+            
+            // 時間経過でフェード
+            alpha *= (1.0 - smoothstep(loopDuration * 0.7, loopDuration, t));
+            
+            // 【修正】距離による自然な消滅（花火の球体範囲外に出ないように）
+            // 範囲を大幅に縮小 (200 -> 130)、かつフェード開始を早める
+            float maxDist = 130.0; 
+            float distFade = 1.0 - smoothstep(60.0, maxDist, currentPos);
+            alpha *= distFade;
+            
+            vAlpha = alpha;
+        }
+    </script>
+
+
+    <script type="x-shader/x-fragment" id="fs-line">
+        uniform float uOpacity;
+        varying vec3 vColor;
+        varying float vAlpha;
+        void main() {
+            gl_FragColor = vec4(vColor, vAlpha * uOpacity);
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-moon">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aScale;
+        attribute vec3 aRandom;
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            vec3 pos = position;
+            
+            // Sphere shape logic
+            float r = 25.0;
+            // Slow divine rotation
+            float theta = uTime * 0.05 + aRandom.y * 6.28; 
+            float phi = acos(2.0 * aRandom.x - 1.0);
+            
+            // Sphere surface
+            pos.x += r * sin(phi) * cos(theta);
+            pos.y += r * sin(phi) * sin(theta) + 45.0; // High in sky
+            pos.z += r * cos(phi) - 80.0; // Behind Torii
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            // Divinely large points for glow
+            gl_PointSize = aScale * uPixelRatio * (350.0 / -mvPosition.z);
+            gl_Position = projectionMatrix * mvPosition;
+
+            // Color: Golden Divine
+            vec3 cMoon = vec3(1.0, 0.9, 0.4); // Gold
+            vec3 cDark = vec3(1.0, 0.7, 0.2); // Amber
+            
+            // Simple noise pattern for craters
+            float noise = sin(aRandom.y * 20.0) * cos(aRandom.x * 20.0);
+            
+            // Pulsing divine glow
+            float pulse = 1.2 + 0.3 * sin(uTime * 1.5 + aRandom.x * 10.0);
+            vec3 color = mix(cDark, cMoon, 0.5 + 0.5 * noise);
+
+            vColor = color * pulse * 2.5; // High intensity for bloom
+            vAlpha = 0.8;
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-cloud">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aScale;
+        attribute vec3 aRandom;
+        varying float vAlpha;
+        varying float vNoise;
+
+        void main() {
+            vec3 pos = position;
+            
+            // --- 漂う動きの強化 ---
+            // 1. 基本的な流れ (Flow)
+            // aRandom.x を使って層ごとに速度を変え、パララックス効果を出す
+            float speed = 2.0 + aRandom.x * 3.0; 
+            float flow = uTime * speed;
+            
+            // 2. 循環 (Loop)
+            // ある範囲を超えたら反対側に戻すことで、延々と流れる雲を表現
+            // 範囲は雲の生成エリアに合わせる
+            float loopRange = 150.0;
+            pos.x = mod(pos.x + flow + aRandom.y * 100.0, loopRange) - (loopRange * 0.5);
+
+            // 3. 揺らぎ (Undulation)
+            // 波打つような動きを加える
+            float wave = sin(uTime * 0.5 + pos.x * 0.05 + aRandom.z * 10.0);
+            pos.y += wave * 3.0;
+            
+            // 4. 伸縮 (Breathing)
+            // 雲の塊が形を変えるような演出
+            float breathe = sin(uTime * 0.2 + aRandom.x * 20.0);
+            
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            
+            // サイズ計算: ふわっとさせるために大きく
+            float dist = length(mvPosition.xyz);
+            float sizePulse = 1.0 + 0.3 * breathe;
+            // 遠くの雲もそれなりに見えるように減衰を調整
+            gl_PointSize = aScale * sizePulse * 120.0 * uPixelRatio * (200.0 / max(dist, 50.0));
+            
+            gl_Position = projectionMatrix * mvPosition;
+
+            // 透明度の動的変化
+            float alphaPulse = 0.5 + 0.5 * sin(uTime * 0.3 + aRandom.y * 50.0);
+            
+            // 画面端でのフェードアウト処理（ループの切れ目を隠す）
+            float edgeFade = 1.0 - pow(abs(pos.x) / (loopRange * 0.5), 4.0);
+            
+            // --- 距離による出現制御 (トンネル内からの漏れを防ぐ) ---
+            // カメラとの距離をチェック (mvPosition.z はカメラ空間での奥行き)
+            float distToCam = -mvPosition.z;
+            float distFade = 1.0 - smoothstep(180.0, 300.0, distToCam);
+            
+            vAlpha = 0.20 * alphaPulse * edgeFade * distFade * aRandom.z; // 合成モードがNormalなので少し強めに
+            vNoise = aRandom.x;
+        }
+    </script>
+    <script type="x-shader/x-fragment" id="fs-cloud">
+        uniform float uOpacity;
+        varying float vAlpha;
+        varying float vNoise;
+        
+        void main() {
+            vec2 coord = gl_PointCoord - vec2(0.5);
+            float aspect = 2.0 + vNoise * 2.0; 
+            float dist = length(coord * vec2(1.0, aspect)); 
+            if (dist > 0.5) discard;
+            float soft = pow(1.0 - dist * 2.0, 2.5);
+            vec3 cloudColor = vec3(0.05, 0.05, 0.12);
+            cloudColor += vec3(0.05, 0.05, 0.08) * soft;
+            gl_FragColor = vec4(cloudColor, vAlpha * soft * uOpacity); 
+        }
+    </script>
+    <script type="x-shader/x-vertex" id="vs-winter">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aScale;
+        attribute vec3 aRandom;
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            vec3 pos = position;
+            
+            // 雪が降る高さの範囲 (ツリーが250なので400以上にする)
+            float hMax = 450.0;
+            float fallSpeed = 15.0 + aRandom.x * 15.0;
+            
+            // 空間内でループさせる (pos.yをシードとして活用)
+            float yPos = mod(pos.y + 200.0 - uTime * fallSpeed, hMax);
+            pos.y = yPos - 50.0; // 地面近くまで降らせる
+
+            // 風によるゆらぎ (螺旋状の揺れ)
+            float drift = sin(uTime * 0.5 + aRandom.z * 6.28) * 20.0;
+            pos.x += drift;
+            pos.z += cos(uTime * 0.4 + aRandom.y * 6.28) * 20.0;
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            
+            // 視覚的なサイズ調整
+            gl_PointSize = aScale * uPixelRatio * (300.0 / -mvPosition.z);
+            gl_Position = projectionMatrix * mvPosition;
+
+            // 色彩: キラキラ光るダイヤモンドダスト
+            vec3 cSnow = vec3(0.95, 0.98, 1.0);
+            float twinkle = sin(uTime * 4.0 + aRandom.y * 100.0);
+            twinkle = pow(0.5 + 0.5 * twinkle, 3.0);
+            
+            vColor = cSnow * (1.0 + twinkle * 3.0);
+            // 消え際と出現時のフェード
+            vAlpha = 0.8 * smoothstep(-50.0, 0.0, pos.y) * (1.0 - smoothstep(350.0, 400.0, pos.y));
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-lightroad">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        uniform float uBoatZ;  // カメラの進行位置
+        attribute float aScale;
+        attribute vec3 aRandom;
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            vec3 pos = position;
+            
+            // 雪へのトランジション計算 (Z_POS.LIGHTROAD=-1950 から Z_POS.WINTER=-2150 へ)
+            float transitionStart = -1850.0;
+            float transitionEnd = -2050.0;
+            float snowRatio = smoothstep(transitionStart, transitionEnd, uBoatZ);
+            
+            // イルミネーション: ゆっくりとした揺らぎ
+            float illumSway = 1.0 - snowRatio;
+            pos.x += sin(uTime * 0.5 + aRandom.x * 10.0) * 2.0 * illumSway;
+            pos.y += cos(uTime * 0.3 + aRandom.y * 10.0) * 1.5 * illumSway;
+            pos.z += sin(uTime * 0.4 + aRandom.z * 10.0) * 2.0 * illumSway;
+            
+            // 雪: 落下する動き
+            if (snowRatio > 0.0) {
+                float fallSpeed = 15.0 + aRandom.x * 10.0;
+                float fallY = mod(uTime * fallSpeed + aRandom.y * 200.0, 150.0);
+                pos.y = mix(pos.y, fallY - 20.0, snowRatio);
+                
+                // 雪のふわふわした横移動
+                pos.x += sin(uTime * 1.5 + aRandom.z * 20.0) * 3.0 * snowRatio;
+                pos.z += cos(uTime * 1.2 + aRandom.x * 20.0) * 3.0 * snowRatio;
+            }
+            
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            
+            float dist = length(mvPosition.xyz);
+            // 雪になるとサイズ縮小
+            float sizeMultiplier = mix(1.0, 0.6, snowRatio);
+            gl_PointSize = aScale * sizeMultiplier * uPixelRatio * (250.0 / max(dist, 30.0));
+            gl_Position = projectionMatrix * mvPosition;
+            
+            // クリスマスカラー: 赤、緑、金、白
+            vec3 cRed = vec3(1.0, 0.2, 0.1);
+            vec3 cGreen = vec3(0.1, 0.9, 0.3);
+            vec3 cGold = vec3(1.0, 0.8, 0.2);
+            vec3 cWhite = vec3(1.0, 1.0, 1.0);
+            vec3 cSnow = vec3(0.9, 0.95, 1.0); // 雪の色（わずかに青み）
+            
+            float colorIdx = aRandom.x;
+            vec3 baseColor;
+            if (colorIdx < 0.25) baseColor = cRed;
+            else if (colorIdx < 0.5) baseColor = cGreen;
+            else if (colorIdx < 0.75) baseColor = cGold;
+            else baseColor = cWhite;
+            
+            // きらめき効果 (雪になると控えめに)
+            float twinkle = sin(uTime * 5.0 + aRandom.y * 50.0);
+            twinkle = pow(0.5 + 0.5 * twinkle, 4.0);
+            float twinkleStrength = mix(2.0, 0.3, snowRatio);
+            
+            // イルミネーション色 → 雪の白へトランジション
+            vec3 illumColor = baseColor * (1.0 + twinkle * twinkleStrength);
+            vec3 snowColor = cSnow * (0.8 + twinkle * 0.2);
+            
+            vColor = mix(illumColor, snowColor, snowRatio);
+            vAlpha = mix(0.7 + twinkle * 0.3, 0.6, snowRatio);
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-monument">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aScale;
+        attribute vec3 aRandom;
+        attribute vec3 aColor;
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+            vec3 pos = position;
+            
+            // 少しだけゆらぎを与える
+            pos.x += sin(uTime + pos.y * 0.05) * 0.3;
+            
+            // 明滅効果
+            float blink = sin(uTime * 2.0 + aRandom.x * 10.0);
+            blink = 0.6 + 0.4 * blink; 
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            gl_PointSize = aScale * uPixelRatio * (250.0 / -mvPosition.z);
+            gl_Position = projectionMatrix * mvPosition;
+
+            vColor = aColor * blink; 
+            vAlpha = 0.95;
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-hydrangea">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aScale;
+        attribute vec3 aRandom;
+        attribute vec3 aColor;
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vRandom;
+
+        void main() {
+            vec3 pos = position;
+            
+            // ゆらゆらと浮遊する動き
+            pos.x += sin(uTime * 0.5 + pos.y * 0.05 + aRandom.x * 10.0) * 1.5;
+            pos.y += cos(uTime * 0.3 + aRandom.y * 10.0) * 0.8;
+            pos.z += sin(uTime * 0.4 + aRandom.z * 10.0) * 1.0;
+            
+            // 明滅効果
+            float blink = sin(uTime * 2.0 + aRandom.x * 10.0);
+            blink = 0.6 + 0.4 * blink; 
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            gl_PointSize = aScale * uPixelRatio * (250.0 / -mvPosition.z);
+            gl_Position = projectionMatrix * mvPosition;
+
+            vColor = aColor * blink; 
+            vAlpha = 0.9;
+            vRandom = aRandom.z; // フラグメントシェーダーに渡す
+        }
+    </script>
+
+
+    <script type="x-shader/x-fragment" id="fs-rain-splash">
+        varying vec3 vColor;
+        varying float vAlpha;
+        void main() {
+            vec2 coord = gl_PointCoord - vec2(0.5);
+            float dist = length(coord);
+            if (dist > 0.5) discard;
+            float ring = smoothstep(0.3, 0.45, dist) - smoothstep(0.45, 0.5, dist);
+            gl_FragColor = vec4(vColor, vAlpha * ring * 2.0); 
+        }
+    </script>
+
+
+    <script type="x-shader/x-fragment" id="fs-rain">
+        uniform float uOpacity;
+        varying vec3 vColor;
+        varying float vAlpha;
+        void main() {
+            vec2 coord = gl_PointCoord - vec2(0.5);
+            float distX = abs(coord.x * 30.0); 
+            float distY = abs(coord.y);
+            float shape = 1.0 - length(vec2(distX, distY * 0.5));
+            if (shape < 0.0) discard;
+            float glow = pow(shape, 3.0);
+            gl_FragColor = vec4(vColor, vAlpha * glow * uOpacity);
+        }
+    </script>
+    <script type="x-shader/x-fragment" id="fs-common">
+        uniform float uOpacity;
+        varying vec3 vColor;
+        varying float vAlpha;
+        void main() {
+            vec2 coord = gl_PointCoord - vec2(0.5);
+            float dist = length(coord);
+            if (dist > 0.5) discard;
+            float glow = 1.0 - (dist * 2.0);
+            glow = pow(glow, 2.0);
+            gl_FragColor = vec4(vColor, vAlpha * glow * uOpacity);
+        }
+    </script>
+
+
+    <script type="x-shader/x-fragment" id="fs-hydrangea">
+        uniform float uBoatZ;
+        uniform float uOpacity;
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vRandom;
+        
+        void main() {
+            vec2 coord = gl_PointCoord - vec2(0.5);
+            float dist = length(coord);
+            float z = uBoatZ;
+            float transition = smoothstep(-400.0, -750.0, z);
+            vec3 cBase = vColor;
+            vec3 cGreen = vec3(0.2, 0.8, 0.3);
+            vec3 cYellow = vec3(1.0, 0.9, 0.1);
+            vec3 targetColor;
+            if (transition < 0.5) {
+                targetColor = mix(cBase, cGreen, transition * 2.0);
+            } else {
+                targetColor = mix(cGreen, cYellow, (transition - 0.5) * 2.0);
+            }
+            if (vRandom > 0.3) {
+                float petalOffset = 0.15;
+                float petalSize = 0.35;
+                vec2 p1 = coord - vec2(petalOffset, 0.0);
+                vec2 p2 = coord - vec2(-petalOffset, 0.0);
+                vec2 p3 = coord - vec2(0.0, petalOffset);
+                vec2 p4 = coord - vec2(0.0, -petalOffset);
+                float d1 = length(p1 * vec2(1.0, 1.3));
+                float d2 = length(p2 * vec2(1.0, 1.3));
+                float d3 = length(p3 * vec2(1.3, 1.0));
+                float d4 = length(p4 * vec2(1.3, 1.0));
+                float minD = min(min(d1, d2), min(d3, d4));
+                if (minD > petalSize) discard;
+                float shape = 1.0 - (minD / petalSize);
+                shape = pow(shape, 1.5);
+                float center = length(coord);
+                float centerGlow = 0.0;
+                if (center < 0.08) { centerGlow = 1.0 - (center / 0.08); }
+                vec3 finalColor = vColor + vec3(0.3, 0.2, 0.0) * centerGlow;
+                gl_FragColor = vec4(finalColor, vAlpha * shape * uOpacity);
+            } else {
+                if (dist > 0.5) discard;
+                float glow = 1.0 - (dist * 2.0);
+                glow = pow(glow, 2.0);
+                gl_FragColor = vec4(vColor, vAlpha * glow * uOpacity);
+            }
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-tree">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        uniform float uOpacity; // フェードイン制御
+        attribute float aScale;
+        attribute vec3 aRandom;
+        attribute float aType; // 0:Leaves, 1:Ornaments, 2:Spiral, 3:Star
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vType;
+        varying float vOpacity;
+
+        void main() {
+            vec3 pos = position;
+            float t = uTime;
+
+            if (aType < 0.5) { 
+                // 0: Ice Leaves (Rotating Cone)
+                float angle = atan(pos.z, pos.x) + t * 0.2 + (pos.y * 0.02);
+                float rad = length(pos.xz);
+                pos.x = cos(angle) * rad;
+                pos.z = sin(angle) * rad;
+                float pulse = 1.0 + 0.05 * sin(t * 2.0 + pos.y * 0.1);
+                pos *= pulse;
+
+            } else if (aType < 1.5) {
+                // 1: Ornaments (Floating Light Spheres)
+                pos.y += sin(t * 2.0 + aRandom.x * 10.0) * 2.0;
+                pos.x += cos(t + aRandom.y * 10.0) * 1.0;
+                
+            } else if (aType < 2.5) {
+                // 2: Spiral Aura (Rising Energy)
+                float speed = 10.0;
+                float yOffset = mod(t * speed + aRandom.x * 100.0, 250.0);
+                pos.y = yOffset;
+                float r = 100.0 * (1.0 - pos.y / 250.0) + 10.0;
+                float angle = t * 2.0 + (pos.y * 0.1) + aRandom.y * 6.28;
+                pos.x = cos(angle) * r;
+                pos.z = sin(angle) * r;
+
+            } else {
+                // 3: Heaven's Gate Star (Top Beam)
+                float spin = t * 5.0;
+            }
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            float dist = length(mvPosition.xyz);
+            
+            float baseSize = aScale;
+            if (aType > 2.5) baseSize *= 5.0;
+            else if (aType > 1.5) baseSize *= 0.5;
+            
+            gl_PointSize = baseSize * uPixelRatio * (400.0 / dist);
+            gl_Position = projectionMatrix * mvPosition;
+
+            vec3 cIce = vec3(0.6, 0.9, 1.0);
+            vec3 cGold = vec3(1.0, 0.8, 0.4);
+            vec3 cCore = vec3(1.0, 1.0, 1.0);
+            
+            vec3 finalColor = cIce;
+            float alpha = 1.0;
+
+            if (aType < 0.5) {
+                finalColor = mix(cIce, cCore, aRandom.x * 0.3);
+                float inner = 1.0 - (length(position.xz) / 100.0);
+                finalColor += cGold * inner * 0.5; 
+                alpha = 0.8;
+                
+            } else if (aType < 1.5) {
+                float blink = sin(t * 3.0 + aRandom.y * 20.0);
+                if (blink > 0.0) {
+                    finalColor = cGold;
+                } else {
+                    finalColor = vec3(1.0, 0.2, 0.3);
+                }
+                finalColor *= 2.0;
+                
+            } else if (aType < 2.5) {
+                finalColor = mix(cGold, cIce, aRandom.z);
+                alpha = 0.6 * (1.0 - pos.y/250.0);
+                
+            } else {
+                finalColor = vec3(1.0, 0.95, 0.8) * 5.0;
+                alpha = 1.0;
+            }
+
+            vColor = finalColor;
+            vAlpha = alpha;
+            vType = aType;
+            vOpacity = uOpacity;
+        }
+    </script>
+    <script type="x-shader/x-fragment" id="fs-tree">
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vType;
+        varying float vOpacity;
+        
+        void main() {
+            vec2 coord = gl_PointCoord - vec2(0.5);
+            float dist = length(coord);
+            
+            float shape = 0.0;
+            
+            if (vType > 2.5) {
+                // Star: Cross flare
+                float d1 = max(0.0, 1.0 - abs(coord.x * 4.0 + coord.y) * 20.0);
+                float d2 = max(0.0, 1.0 - abs(coord.x * 4.0 - coord.y) * 20.0);
+                float core = max(0.0, 1.0 - dist * 4.0);
+                shape = d1 + d2 + core;
+                
+            } else if (vType > 1.5) {
+                // Spiral: Soft particle
+                shape = max(0.0, 1.0 - dist * 2.0);
+                shape = pow(shape, 2.0);
+                
+            } else if (vType > 0.5) {
+                // Ornament: Sharp circle with glow
+                if (dist > 0.5) discard;
+                float core = smoothstep(0.4, 0.0, dist);
+                float glow = exp(-dist * 3.0);
+                shape = core + glow * 0.5;
+                
+            } else {
+                // Leaves: Diamond/Ice shard
+                float d = abs(coord.x) + abs(coord.y);
+                if (d > 0.5) discard;
+                shape = 1.0 - d * 2.0;
+                shape = pow(shape, 0.5);
+            }
+
+            gl_FragColor = vec4(vColor, vAlpha * shape * vOpacity);
+        }
+    </script>
+
+
+    <script type="x-shader/x-vertex" id="vs-lantern">
+        uniform float uTime;
+        uniform float uPixelRatio;
+        attribute float aScale;
+        attribute vec3 aRandom;
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vFlicker;
+        varying float vHeightRatio;
+
+        void main() {
+            vec3 pos = position;
+            
+            // 上昇速度
+            float riseSpeed = 6.0 + aRandom.x * 4.0;
+            float yPos = mod(pos.y + uTime * riseSpeed, 350.0);
+            pos.y = yPos - 30.0;
+            
+            // ゆらゆらと漂う動き
+            float sway = sin(uTime * 0.3 + aRandom.z * 6.28) * 8.0;
+            pos.x += sway;
+            pos.z += cos(uTime * 0.25 + aRandom.y * 6.28) * 5.0;
+            
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+            
+            float dist = length(mvPosition.xyz);
+            gl_PointSize = aScale * uPixelRatio * (600.0 / max(dist, 40.0));
+            gl_Position = projectionMatrix * mvPosition;
+            
+            // ろうそくの揺らめき
+            float flicker = sin(uTime * 4.0 + aRandom.x * 100.0) * 0.5 + 0.5;
+            vFlicker = flicker;
+            
+            // 高さ比率をフラグメントシェーダーに渡す (0=底, 1=頂点)
+            vHeightRatio = clamp((pos.y + 30.0) / 350.0, 0.0, 1.0);
+            
+            vColor = vec3(1.0);
+            
+            // 高度によるフェード
+            float heightFade = smoothstep(-30.0, 10.0, pos.y) * (1.0 - smoothstep(280.0, 320.0, pos.y));
+            vAlpha = 0.95 * heightFade;
+        }
+    </script>
+    <script type="x-shader/x-fragment" id="fs-lantern">
+        uniform float uOpacity;
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vFlicker;
+        varying float vHeightRatio;
+
+        void main() {
+            vec2 coord = gl_PointCoord - vec2(0.5);
+            float ellipseX = coord.x * 1.6;
+            float ellipseY = coord.y * 0.9;
+            float dist = length(vec2(ellipseX, ellipseY));
+            
+            float softShape = 1.0 - smoothstep(0.0, 0.5, dist);
+            softShape = pow(softShape, 1.3);
+            
+            float outerGlow = exp(-dist * 2.5);
+            float innerGlow = exp(-dist * 6.0);
+            
+            if (softShape < 0.005 && outerGlow < 0.02) discard;
+            
+            float core = 1.0 - smoothstep(0.0, 0.15, dist);
+            core = pow(core, 2.5);
+            core *= (0.6 + vFlicker * 0.5);
+            
+            float colorVariation = fract(vHeightRatio * 7.3 + vFlicker * 2.0);
+            vec3 cGold = vec3(1.0, 0.7, 0.2);
+            vec3 cAmber = vec3(1.0, 0.5, 0.15);
+            vec3 cPeach = vec3(1.0, 0.6, 0.4);
+            vec3 cWarmPink = vec3(1.0, 0.45, 0.35);
+            
+            vec3 baseColor;
+            if (colorVariation < 0.3) {
+                baseColor = mix(cGold, cAmber, colorVariation / 0.3);
+            } else if (colorVariation < 0.6) {
+                baseColor = mix(cAmber, cPeach, (colorVariation - 0.3) / 0.3);
+            } else {
+                baseColor = mix(cPeach, cWarmPink, (colorVariation - 0.6) / 0.4);
+            }
+            
+            vec3 cCore = vec3(1.0, 0.98, 0.85);
+            vec3 cOuterGlow = baseColor * 0.6;
+            
+            vec3 finalColor = mix(baseColor, cCore, core + innerGlow * 0.5);
+            finalColor = mix(cOuterGlow, finalColor, softShape + 0.3);
+            finalColor *= (0.9 + vFlicker * 0.25);
+            
+            float alpha = vAlpha * (softShape + outerGlow * 0.4) * uOpacity;
+            alpha = min(alpha, 1.0);
+            
+            gl_FragColor = vec4(finalColor, alpha);
+        }
+    </script>
+
+
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { Water } from 'three/addons/objects/Water.js';
+
+        const SEASON_DIST = 350;
+        const WORLD_CONFIG = {
+            fogDensity: 0.006,
+            waterLevel: -10,
+            particleCount: 30000
+        };
+
+        const Z_POS = {
+            SPRING: 30,
+            RAIN: -SEASON_DIST + 50,
+            SUMMER: -SEASON_DIST * 2 + 50,
+            AUTUMN: -SEASON_DIST * 3 + 50,
+            LANTERN: -SEASON_DIST * 5 + 50,
+            LIGHTROAD: -SEASON_DIST * 5.8 + 50,
+            WINTER: -SEASON_DIST * 6.5 + 50,
+            FINALE: -SEASON_DIST * 8.2 + 50,
+            LIMIT: -SEASON_DIST * 9.5 - 150
+        };
+
+        class App {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.composer = null;
+                this.water = null;
+
+                this.seasonObjects = [];
+                this.materials = [];
+                this.uploadedImages = [];
+                this.uploadCounters = { spring: 0, rain: 0, summer: 0, autumn: 0, winter: 0, random: 0 };
+                this.pendingTexture = null;
+
+                this.time = 0;
+                this.lastTime = performance.now();
+                this.boatSpeed = 0.2;
+                this.isPaused = true;
+                this.boatZ = 150;
+
+                this.isViewControl = false;
+                this.mouseX = 0;
+                this.mouseY = 0;
+                this.targetYaw = 0;
+                this.targetPitch = 0;
+                this.currentYaw = 0;
+                this.currentPitch = 0;
+
+                this.init();
+                this.animate();
+            }
+
+            init() {
+                const container = document.getElementById('canvas-container');
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                container.appendChild(this.renderer.domElement);
+
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x050510);
+                this.scene.fog = new THREE.FogExp2(0x050510, 0.009);
+
+                this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+                this.camera.position.set(0, 5, 50);
+
+                const renderScene = new RenderPass(this.scene, this.camera);
+                const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+                bloomPass.strength = 1.2;
+                bloomPass.radius = 0.5;
+                bloomPass.threshold = 1.0;
+
+                this.composer = new EffectComposer(this.renderer);
+                this.composer.addPass(renderScene);
+
+                this.composer.addPass(bloomPass);
+
+                const SEASON_COLORS = {
+                    SPRING: new THREE.Color(0x100508),
+                    RAIN: new THREE.Color(0x050a15),
+                    SUMMER: new THREE.Color(0x050510),
+                    AUTUMN: new THREE.Color(0x020205),
+                    WINTER: new THREE.Color(0x050a15)
+                };
+
+                this.currentFogColor = new THREE.Color(0x050510);
+                this.targetFogColor = new THREE.Color(0x050510);
+
+                this.createWaterLake();
+                this.createSeasons();
+                this.addLights();
+
+                window.addEventListener('resize', this.onResize.bind(this));
+                window.addEventListener('mousemove', this.onMouseMove.bind(this));
+                window.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
+                window.addEventListener('keydown', this.onKeyDown.bind(this));
+
+                const controls = document.getElementById('controls');
+                let hideTimeout;
+                document.addEventListener('mousemove', (e) => {
+                    const windowHeight = window.innerHeight;
+                    const mouseY = e.clientY;
+
+                    if (mouseY > windowHeight - 150) {
+                        controls.classList.add('visible');
+                        clearTimeout(hideTimeout);
+                    } else {
+                        clearTimeout(hideTimeout);
+                        hideTimeout = setTimeout(() => {
+                            controls.classList.remove('visible');
+                        }, 1000);
+                    }
+                });
+
+                setTimeout(() => {
+                    document.getElementById('loading').style.opacity = '0';
+                    setTimeout(() => document.getElementById('loading').remove(), 1500);
+                }, 1500);
+            }
+
+            createWaterLake() {
+                const width = 512;
+                const height = 512;
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+
+                const imgData = ctx.createImageData(width, height);
+                const data = imgData.data;
+
+                const getHeight = (x, y) => {
+                    const val1 = Math.sin(x * 0.02 + y * 0.015);
+                    const val2 = Math.sin(x * 0.08 - y * 0.05);
+                    const noise = Math.random() * 0.15;
+                    return val1 * 0.4 + val2 * 0.2 + noise;
+                };
+
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        // Compute Normal from numeric gradient
+                        const h = getHeight(x, y);
+                        const hx = getHeight((x + 1) % width, y);
+                        const hy = getHeight(x, (y + 1) % height);
+
+                        const strength = 20.0;
+                        const dx = (hx - h) * strength;
+                        const dy = (hy - h) * strength;
+
+                        let nx = -dx;
+                        let ny = -dy;
+                        let nz = 1.0;
+
+                        const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+                        nx /= len; ny /= len; nz /= len;
+
+                        const r = (nx + 1.0) * 127.5;
+                        const g = (ny + 1.0) * 127.5;
+                        const b = (nz + 1.0) * 127.5;
+
+                        const idx = (y * width + x) * 4;
+                        data[idx] = Math.floor(r);
+                        data[idx + 1] = Math.floor(g);
+                        data[idx + 2] = Math.floor(b);
+                        data[idx + 3] = 255;
+                    }
+                }
+
+                ctx.putImageData(imgData, 0, 0);
+
+                const waterTexture = new THREE.CanvasTexture(canvas);
+                waterTexture.wrapS = waterTexture.wrapT = THREE.RepeatWrapping;
+
+                const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
+
+                this.water = new Water(waterGeometry, {
+                    textureWidth: 512, textureHeight: 512,
+                    waterNormals: waterTexture,
+                    sunDirection: new THREE.Vector3(0, 1, 0),
+                    sunColor: 0xffffff,
+                    waterColor: 0x010204,
+                    distortionScale: 6.0,
+                    fog: true
+                });
+
+                this.water.rotation.x = -Math.PI / 2;
+                this.water.position.y = WORLD_CONFIG.waterLevel;
+                this.water.position.z = -4000;
+                this.water.material.uniforms.size.value = 4.0;
+
+                this.scene.add(this.water);
+            }
+
+            createSeasons() {
+                this.createMonument('spring', 0);
+
+                this.createParticleGroup('rain', 'vs-rain', 'fs-rain', Z_POS.RAIN);
+
+                this.createMonument('hydrangea', Z_POS.RAIN - 100);
+
+                this.createFireworks(Z_POS.SUMMER - 100);
+                this.createParticleGroup('seaspray', 'vs-seaspray', 'fs-common', Z_POS.SUMMER - 100);
+
+                this.createMonument('autumn_leaves', Z_POS.AUTUMN - 50);
+                this.createMonument('torii_moon', Z_POS.AUTUMN - 350);
+
+                this.createLanterns(Z_POS.LANTERN);
+
+                this.createLightRoad(Z_POS.LIGHTROAD);
+
+                this.createParticleGroup('winter', 'vs-winter', 'fs-common', Z_POS.WINTER - 200);
+                this.createMonument('xmas_tree', Z_POS.WINTER - 200);
+            }
+
+            createLightRoad(zPos) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const scales = [];
+                const randoms = [];
+                const count = 8000;
+
+                for (let i = 0; i < count; i++) {
+                    const side = Math.random() > 0.5 ? 1 : -1;
+                    const xBase = side * (15 + Math.random() * 25);
+                    const x = xBase + (Math.random() - 0.5) * 10;
+                    const y = Math.random() * 60;
+                    const z = (Math.random() - 0.5) * 400;
+
+                    positions.push(x, y, z);
+                    scales.push(Math.random() * 2.0 + 1.0);
+                    randoms.push(Math.random(), Math.random(), Math.random());
+                }
+
+                // 上空にも少し散らす
+                for (let i = 0; i < 2000; i++) {
+                    const x = (Math.random() - 0.5) * 100;
+                    const y = 30 + Math.random() * 80;
+                    const z = (Math.random() - 0.5) * 400;
+                    positions.push(x, y, z);
+                    scales.push(Math.random() * 1.5 + 0.5);
+                    randoms.push(Math.random(), Math.random(), Math.random());
+                }
+
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('aScale', new THREE.Float32BufferAttribute(scales, 1));
+                geometry.setAttribute('aRandom', new THREE.Float32BufferAttribute(randoms, 3));
+
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        uTime: { value: 0 },
+                        uPixelRatio: { value: this.renderer.getPixelRatio() },
+                        uBoatZ: { value: 0 },
+                        uOpacity: { value: 1 }
+                    },
+                    vertexShader: document.getElementById('vs-lightroad').textContent,
+                    fragmentShader: document.getElementById('fs-common').textContent,
+                    transparent: true,
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending
+                });
+
+                const mesh = new THREE.Points(geometry, material);
+                mesh.position.set(0, WORLD_CONFIG.waterLevel, zPos);
+                this.scene.add(mesh);
+                this.materials.push(material);
+                this.lightRoadMaterial = material;
+            }
+
+            createLanterns(zPos) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const scales = [];
+                const randoms = [];
+                const count = 3000;
+
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * 80;
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.random() * 350;
+                    const z = Math.sin(angle) * radius + (Math.random() - 0.5) * 200;
+
+                    positions.push(x, y, z);
+                    scales.push(Math.random() * 3.0 + 2.0);
+                    randoms.push(Math.random(), Math.random(), Math.random());
+                }
+
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('aScale', new THREE.Float32BufferAttribute(scales, 1));
+                geometry.setAttribute('aRandom', new THREE.Float32BufferAttribute(randoms, 3));
+
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        uTime: { value: 0 },
+                        uPixelRatio: { value: this.renderer.getPixelRatio() },
+                        uOpacity: { value: 1 }
+                    },
+                    vertexShader: document.getElementById('vs-lantern').textContent,
+                    fragmentShader: document.getElementById('fs-lantern').textContent,
+                    transparent: true,
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending
+                });
+
+                const mesh = new THREE.Points(geometry, material);
+                mesh.position.set(0, WORLD_CONFIG.waterLevel, zPos);
+                this.scene.add(mesh);
+                this.materials.push(material);
+                this.lanternMesh = mesh;
+                this.lanternMaterial = material;
+            }
+
+            createFireworks(zCenter) {
+                const mainGroup = new THREE.Group();
+                mainGroup.position.set(0, 0, zCenter);
+                this.scene.add(mainGroup);
+                this.fireworksGroup = mainGroup;
+                this.fireworkMaterials = [];
+
+                const createSingleFirework = (xOffset, yOffset, scale, particleCount, timeOffset) => {
+                    const geometry = new THREE.BufferGeometry();
+                    const dirs = [];
+                    const offsets = [];
+                    const scales = [];
+                    const speeds = [];
+                    const decays = [];
+
+                    for (let i = 0; i < particleCount; i++) {
+                        const theta = Math.random() * Math.PI * 2;
+                        const phi = Math.acos(2 * Math.random() - 1);
+                        const dx = Math.sin(phi) * Math.cos(theta);
+                        const dy = Math.sin(phi) * Math.sin(theta);
+                        const dz = Math.cos(phi);
+                        dirs.push(dx, dy, dz);
+
+                        const launchGroup = Math.floor(Math.random() * 3);
+                        const baseDelay = launchGroup * 1.5 + timeOffset;
+                        const randomDelay = Math.random() * 0.5;
+                        offsets.push(baseDelay + randomDelay);
+
+                        scales.push((Math.random() * 0.5 + 0.5) * scale);
+                        speeds.push((Math.random() * 0.5 + 0.5) * scale);
+                        decays.push(Math.random() * 0.2 + 0.8);
+                    }
+
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(particleCount * 3), 3));
+                    geometry.setAttribute('aDir', new THREE.Float32BufferAttribute(dirs, 3));
+                    geometry.setAttribute('aOffset', new THREE.Float32BufferAttribute(offsets, 1));
+                    geometry.setAttribute('aScale', new THREE.Float32BufferAttribute(scales, 1));
+                    geometry.setAttribute('aSpeed', new THREE.Float32BufferAttribute(speeds, 1));
+                    geometry.setAttribute('aDecay', new THREE.Float32BufferAttribute(decays, 1));
+
+                    const material = new THREE.ShaderMaterial({
+                        uniforms: {
+                            uTime: { value: 0 },
+                            uPixelRatio: { value: this.renderer.getPixelRatio() },
+                            uOpacity: { value: 1 }
+                        },
+                        vertexShader: document.getElementById('vs-fireworks').textContent,
+                        fragmentShader: document.getElementById('fs-common').textContent,
+                        transparent: true,
+                        depthWrite: false,
+                        blending: THREE.AdditiveBlending
+                    });
+
+                    const points = new THREE.Points(geometry, material);
+                    points.position.set(xOffset, yOffset, 0);
+                    mainGroup.add(points);
+                    this.materials.push(material);
+                    this.fireworkMaterials.push(material);
+                };
+
+                // --- メイン花火（中央、大きい）---
+                createSingleFirework(0, 0, 1.0, 10000, 0);
+
+                // --- 左サイドのモブ花火 ---
+                createSingleFirework(-60, -20, 0.6, 4000, 0.8);   // 少し低め、小さめ
+                createSingleFirework(-45, -10, 0.5, 3000, 2.0);   // もっと小さい
+                createSingleFirework(-80, -15, 0.55, 3500, 3.5);  // 遠め
+
+                // --- 右サイドのモブ花火 ---
+                createSingleFirework(55, -25, 0.55, 3500, 1.2);   // 少し低め
+                createSingleFirework(70, -10, 0.6, 4000, 2.5);    // 
+                createSingleFirework(40, -20, 0.45, 2500, 4.0);   // 小さめ
+
+                // --- 彗星花火 (スターマイン / コメット) ---
+                const createCometGroup = (xOffset, yOffset, count, timeOffset, angleBase, angleRange) => {
+                    const geometry = new THREE.BufferGeometry();
+                    const dirs = new Float32Array(count * 3);
+                    const offsets = new Float32Array(count);
+                    const scales = new Float32Array(count);
+                    const speeds = new Float32Array(count);
+
+                    for (let i = 0; i < count; i++) {
+                        // ランダムな角度で飛び交う
+                        // angleBaseを中心にangleRangeの範囲でランダム
+                        const angle = angleBase + (Math.random() - 0.5) * angleRange;
+
+                        // Z方向（奥行き）も少しランダムに
+                        const zSpread = (Math.random() - 0.5) * 0.8;
+
+                        // 方向ベクトル計算
+                        dirs[i * 3] = Math.cos(angle);     // X
+                        dirs[i * 3 + 1] = Math.sin(angle); // Y
+                        dirs[i * 3 + 2] = zSpread;         // Z
+
+                        // ランダムなタイミングで飛び出す
+                        const randomDelay = Math.random() * 2.0;
+                        offsets[i] = timeOffset + randomDelay;
+
+                        scales[i] = Math.random() * 2.0 + 1.0;
+                        speeds[i] = 1.0 + Math.random() * 0.6; // 少し速く
+                    }
+
+                    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+                    geometry.setAttribute('aDir', new THREE.BufferAttribute(dirs, 3));
+                    geometry.setAttribute('aOffset', new THREE.BufferAttribute(offsets, 1));
+                    geometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
+                    geometry.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
+
+                    const material = new THREE.ShaderMaterial({
+                        uniforms: {
+                            uTime: { value: 0 },
+                            uPixelRatio: { value: this.renderer.getPixelRatio() },
+                            uOpacity: { value: 1 }
+                        },
+                        vertexShader: document.getElementById('vs-comet').textContent,
+                        fragmentShader: document.getElementById('fs-common').textContent,
+                        transparent: true,
+                        depthWrite: false,
+                        blending: THREE.AdditiveBlending
+                    });
+
+                    const points = new THREE.Points(geometry, material);
+                    points.position.set(xOffset, yOffset, 0);
+                    mainGroup.add(points);
+                    this.materials.push(material);
+                    this.fireworkMaterials.push(material);
+                };
+
+                // 左右に彗星花火 (クロス・乱れ打ち)
+                // 左から右へ (-30度〜-80度くらいで発射、垂直は-90度)
+                // Math.PI = 180度, PI/2 = 90度
+                // -Math.PI/2 (真上) 
+
+                // 左側発射 (右へ流れる)
+                createCometGroup(-50, -35, 600, 0.0, -Math.PI / 2 + 0.5, 0.4);
+                // 右側発射 (左へ流れる)
+                createCometGroup(50, -35, 600, 0.5, -Math.PI / 2 - 0.5, 0.4);
+
+                // 中央から乱れ打ち
+                createCometGroup(0, -35, 400, 1.0, -Math.PI / 2, 1.0); // 広い角度で拡散
+
+                // さらに遅れてクロス
+                createCometGroup(-40, -35, 500, 2.0, -Math.PI / 2 + 0.8, 0.3);
+                createCometGroup(40, -35, 500, 2.5, -Math.PI / 2 - 0.8, 0.3);
+
+                // --- 水星花火 (直線的な茎 - ランダムクロス) ---
+                const createRisingGroup = (xOffset, yOffset, count, timeOffset, angleBase, angleSpread) => {
+                    const geometry = new THREE.BufferGeometry();
+                    const offsets = new Float32Array(count);
+                    const scales = new Float32Array(count);
+                    const speeds = new Float32Array(count);
+                    const angles = new Float32Array(count);
+
+                    for (let i = 0; i < count; i++) {
+                        // 直線的に打ち上がるが、全体的に傾ける
+                        angles[i] = angleBase + (Math.random() - 0.5) * angleSpread;
+
+                        // ランダムなタイミング
+                        const randomDelay = Math.random() * 2.0;
+                        offsets[i] = timeOffset + randomDelay;
+
+                        scales[i] = Math.random() * 1.5 + 0.8;
+                        speeds[i] = 0.7 + Math.random() * 0.5;
+                    }
+
+                    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+                    geometry.setAttribute('aOffset', new THREE.BufferAttribute(offsets, 1));
+                    geometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
+                    geometry.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
+                    geometry.setAttribute('aAngle', new THREE.BufferAttribute(angles, 1));
+
+                    const material = new THREE.ShaderMaterial({
+                        uniforms: {
+                            uTime: { value: 0 },
+                            uPixelRatio: { value: this.renderer.getPixelRatio() },
+                            uOpacity: { value: 1 }
+                        },
+                        vertexShader: document.getElementById('vs-rising').textContent,
+                        fragmentShader: document.getElementById('fs-common').textContent,
+                        transparent: true,
+                        depthWrite: false,
+                        blending: THREE.AdditiveBlending
+                    });
+
+                    const points = new THREE.Points(geometry, material);
+                    points.position.set(xOffset, yOffset, 0);
+                    mainGroup.add(points);
+                    this.materials.push(material);
+                    this.fireworkMaterials.push(material);
+                };
+
+                // 水星花火もクロスさせる
+                createRisingGroup(0, -50, 200, 0.0, 0.0, 0.3); // 中央（少しばらつく）
+                createRisingGroup(-40, -50, 150, 1.0, 0.5, 0.2); // 左から右奥へ
+                createRisingGroup(40, -50, 150, 1.5, -0.5, 0.2); // 右から左奥へ
+                createRisingGroup(-20, -50, 100, 2.5, -0.3, 0.4); // ランダム
+                createRisingGroup(20, -50, 100, 3.0, 0.3, 0.4); // ランダム
+
+                // --- 扇型花火 (Fan/Mine) ---
+                const createFanGroup = (xOffset, yOffset, count, timeOffset, scaleMultiplier) => {
+                    const geometry = new THREE.BufferGeometry();
+                    const offsets = new Float32Array(count);
+                    const scales = new Float32Array(count);
+                    const angles = new Float32Array(count);
+                    const speeds = new Float32Array(count);
+
+                    for (let i = 0; i < count; i++) {
+                        // -60度〜60度の範囲で扇状に
+                        // 中央ほど密に、端ほど疎にするために pure random ではなく工夫してもいいが、
+                        // ここでは単純にランダム
+                        const angleDeg = (Math.random() - 0.5) * 120.0;
+                        const angleRad = angleDeg * Math.PI / 180.0;
+                        angles[i] = angleRad;
+
+                        offsets[i] = timeOffset + Math.random() * 0.5; // ほぼ同時発射
+                        scales[i] = (Math.random() * 1.5 + 0.5) * scaleMultiplier;
+                        speeds[i] = 1.0 + Math.random() * 0.5;
+                    }
+
+                    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+                    geometry.setAttribute('aOffset', new THREE.BufferAttribute(offsets, 1));
+                    geometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
+                    geometry.setAttribute('aAngle', new THREE.BufferAttribute(angles, 1));
+                    geometry.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
+
+                    const material = new THREE.ShaderMaterial({
+                        uniforms: {
+                            uTime: { value: 0 },
+                            uPixelRatio: { value: this.renderer.getPixelRatio() },
+                            uOpacity: { value: 1 }
+                        },
+                        vertexShader: document.getElementById('vs-fan').textContent,
+                        fragmentShader: document.getElementById('fs-common').textContent,
+                        transparent: true,
+                        depthWrite: false,
+                        blending: THREE.AdditiveBlending
+                    });
+
+                    const points = new THREE.Points(geometry, material);
+                    points.position.set(xOffset, yOffset, -20);
+                    mainGroup.add(points);
+                    this.materials.push(material);
+                    this.fireworkMaterials.push(material);
+                };
+
+                // --- 煙エフェクト ---
+                const createSmoke = () => {
+                    const count = 100;
+                    const geometry = new THREE.BufferGeometry();
+                    const positions = [];
+                    const scales = [];
+                    const randoms = [];
+
+                    for (let i = 0; i < count; i++) {
+                        const x = (Math.random() - 0.5) * 300.0;
+                        const y = (Math.random() - 0.5) * 150.0 + 50.0; // 空中
+                        const z = (Math.random() - 0.5) * 100.0 - 50.0; // 少し奥
+
+                        positions.push(x, y, z);
+                        scales.push(Math.random() * 2.0 + 1.0);
+                        randoms.push(Math.random(), Math.random(), Math.random());
+                    }
+
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    geometry.setAttribute('aScale', new THREE.Float32BufferAttribute(scales, 1));
+                    geometry.setAttribute('aRandom', new THREE.Float32BufferAttribute(randoms, 3));
+
+                    const material = new THREE.ShaderMaterial({
+                        uniforms: {
+                            uTime: { value: 0 },
+                            uPixelRatio: { value: this.renderer.getPixelRatio() },
+                            uOpacity: { value: 1 }
+                        },
+                        vertexShader: document.getElementById('vs-smoke').textContent,
+                        fragmentShader: document.getElementById('fs-common').textContent,
+                        transparent: true,
+                        depthWrite: false,
+                        blending: THREE.AdditiveBlending
+                    });
+
+                    const points = new THREE.Points(geometry, material);
+                    mainGroup.add(points);
+                    this.materials.push(material);
+                    this.fireworkMaterials.push(material);
+                };
+
+                // 扇型花火の発射 (連発)
+                createFanGroup(0, -60, 1500, 0.2, 1.0);  // 1発目
+                createFanGroup(0, -60, 1500, 2.2, 0.8);  // 2発目
+                createFanGroup(0, -60, 1500, 4.2, 1.2);  // 3発目
+
+                // --- ロケット花火 (Random Straight Lines) ---
+                const createRocketGroup = (xOffset, yOffset, count, timeOffset) => {
+                    const geometry = new THREE.BufferGeometry();
+                    const dirs = new Float32Array(count * 3);
+                    const offsets = new Float32Array(count);
+                    const scales = new Float32Array(count);
+                    const speeds = new Float32Array(count);
+
+                    for (let i = 0; i < count; i++) {
+                        // 完全ランダムな方向 (球面上)
+                        const theta = Math.random() * Math.PI * 2;
+                        const phi = Math.acos(2 * Math.random() - 1);
+
+                        // Z方向(手前・奥)の成分を少し抑えて、横に広がりやすくする
+                        // phi: 0~PI. PI/2が水平.
+                        // 水平に近いほど飛びやすくする重み付け
+
+                        const dx = Math.sin(phi) * Math.cos(theta);
+                        const dy = Math.sin(phi) * Math.sin(theta);
+                        const dz = Math.cos(phi);
+
+                        dirs[i * 3] = dx;
+                        dirs[i * 3 + 1] = dy;
+                        dirs[i * 3 + 2] = dz;
+
+                        // バラバラ発射
+                        const randomDelay = Math.random() * 2.0;
+                        offsets[i] = timeOffset + randomDelay;
+
+                        scales[i] = Math.random() * 1.5 + 1.0;
+                        speeds[i] = 1.2 + Math.random() * 1.0; // かなり高速
+                    }
+
+                    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+                    geometry.setAttribute('aDir', new THREE.BufferAttribute(dirs, 3));
+                    geometry.setAttribute('aOffset', new THREE.BufferAttribute(offsets, 1));
+                    geometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
+                    geometry.setAttribute('aSpeed', new THREE.BufferAttribute(speeds, 1));
+
+                    const material = new THREE.ShaderMaterial({
+                        uniforms: {
+                            uTime: { value: 0 },
+                            uPixelRatio: { value: this.renderer.getPixelRatio() },
+                            uOpacity: { value: 1 }
+                        },
+                        vertexShader: document.getElementById('vs-rocket').textContent,
+                        fragmentShader: document.getElementById('fs-common').textContent,
+                        transparent: true,
+                        depthWrite: false,
+                        blending: THREE.AdditiveBlending
+                    });
+
+                    const points = new THREE.Points(geometry, material);
+                    points.position.set(xOffset, yOffset, 0);
+                    mainGroup.add(points);
+                    this.materials.push(material);
+                    this.fireworkMaterials.push(material);
+                };
+
+                // ロケット花火投入 (賑やかし)
+                // ロケット花火投入 (賑やかし) - パーティクル版は削減し、トレーサー版へ移行
+                // createRocketGroup(0, -20, 300, 2.0); 
+
+                // --- LASER EFFECTS (LINES) ---
+
+                // 1. Laser Fan (扇型レーザー) - 地上から広がる光線
+                const createLaserFan = (xOffset, yOffset, count, timeOffset, colorHex) => {
+                    const geometry = new THREE.BufferGeometry();
+                    const vertices = []; // x,y,z (unused, set in shader via aDir)
+                    const dirs = [];
+                    const sides = [];
+                    const offsets = [];
+                    const scales = [];
+                    const colors = [];
+
+                    const cObj = new THREE.Color(colorHex);
+
+                    for (let i = 0; i < count; i++) {
+                        // 扇型のアングル (-90 ~ 90)
+                        const angleDeg = (Math.random() - 0.5) * 160.0;
+                        const angleRad = angleDeg * Math.PI / 180.0;
+
+                        const dx = Math.sin(angleRad);
+                        const dy = Math.cos(angleRad);
+                        const dz = (Math.random() - 0.5) * 0.2; // 薄い奥行き
+
+                        // 各線分は2頂点
+                        for (let k = 0; k < 2; k++) {
+                            vertices.push(0, 0, 0); // ダミー
+                            dirs.push(dx, dy, dz);
+                            sides.push(k); // 0:Root, 1:Tip
+                            offsets.push(timeOffset); // 同時発射
+                            scales.push(1.0 + Math.random() * 0.5); // 長さのばらつき
+                            colors.push(cObj.r, cObj.g, cObj.b);
+                        }
+                    }
+
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                    geometry.setAttribute('aDir', new THREE.Float32BufferAttribute(dirs, 3));
+                    geometry.setAttribute('aSide', new THREE.Float32BufferAttribute(sides, 1));
+                    geometry.setAttribute('aOffset', new THREE.Float32BufferAttribute(offsets, 1));
+                    geometry.setAttribute('aScale', new THREE.Float32BufferAttribute(scales, 1));
+                    geometry.setAttribute('aColor', new THREE.Float32BufferAttribute(colors, 3));
+
+                    const material = new THREE.ShaderMaterial({
+                        uniforms: {
+                            uTime: { value: 0 },
+                            uOpacity: { value: 1 }
+                        },
+                        vertexShader: document.getElementById('vs-laser').textContent,
+                        fragmentShader: document.getElementById('fs-line').textContent,
+                        transparent: true,
+                        depthWrite: false,
+                        blending: THREE.AdditiveBlending,
+                        lineWidth: 2
+                    });
+
+                    const lines = new THREE.LineSegments(geometry, material);
+                    lines.position.set(xOffset, yOffset, -10);
+                    mainGroup.add(lines);
+                    this.materials.push(material);
+                    this.fireworkMaterials.push(material);
+                };
+
+                // 2. Tracer Rocket (飛翔するレーザー軌跡)
+                const createTracerRocket = (xOffset, yOffset, count, timeOffset) => {
+                    const geometry = new THREE.BufferGeometry();
+                    const vertices = [];
+                    const dirs = [];
+                    const sides = [];
+                    const offsets = [];
+                    const speeds = [];
+                    const colors = [];
+
+                    for (let i = 0; i < count; i++) {
+                        // ランダム方向
+                        const theta = Math.random() * Math.PI * 2;
+                        const phi = Math.acos(2 * Math.random() - 1);
+                        const dx = Math.sin(phi) * Math.cos(theta);
+                        const dy = Math.sin(phi) * Math.sin(theta);
+                        const dz = Math.cos(phi);
+
+                        // バラバラの発射タイミング
+                        const delay = Math.random() * 2.5;
+                        const spd = 0.8 + Math.random() * 0.8;
+
+                        // 色ランダム (Cyan, Magenta, Yellow, Green)
+                        const type = Math.random();
+                        let r = 1, g = 1, b = 1;
+                        if (type < 0.25) { r = 0; g = 1; b = 1; } // Cyan
+                        else if (type < 0.5) { r = 1; g = 0; b = 1; } // Magenta
+                        else if (type < 0.75) { r = 1; g = 1; b = 0; } // Yellow
+                        else { r = 0; g = 1; b = 0.2; } // Green
+
+                        for (let k = 0; k < 2; k++) {
+                            vertices.push(0, 0, 0);
+                            dirs.push(dx, dy, dz);
+                            sides.push(k); // 0:Tail, 1:Head
+                            offsets.push(timeOffset + delay);
+                            speeds.push(spd);
+                            colors.push(r, g, b);
+                        }
+                    }
+
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                    geometry.setAttribute('aDir', new THREE.Float32BufferAttribute(dirs, 3));
+                    geometry.setAttribute('aSide', new THREE.Float32BufferAttribute(sides, 1));
+                    geometry.setAttribute('aOffset', new THREE.Float32BufferAttribute(offsets, 1));
+                    geometry.setAttribute('aSpeed', new THREE.Float32BufferAttribute(speeds, 1));
+                    geometry.setAttribute('aColor', new THREE.Float32BufferAttribute(colors, 3));
+
+                    const material = new THREE.ShaderMaterial({
+                        uniforms: { uTime: { value: 0 }, uOpacity: { value: 1 } },
+                        vertexShader: document.getElementById('vs-tracer').textContent,
+                        fragmentShader: document.getElementById('fs-line').textContent,
+                        transparent: true,
+                        depthWrite: false,
+                        blending: THREE.AdditiveBlending
+                    });
+
+                    const lines = new THREE.LineSegments(geometry, material);
+                    lines.position.set(xOffset, yOffset, 0);
+                    mainGroup.add(lines);
+                    this.materials.push(material);
+                    this.fireworkMaterials.push(material);
+                };
+
+                // レーザー演出の投入
+
+                // Fan Laser (Green & Blue) - 扇型花火と同期
+                createLaserFan(0, -60, 50, 0.2, 0x00ffaa);
+                createLaserFan(0, -60, 60, 2.2, 0x00aaff);
+                createLaserFan(0, -60, 80, 4.2, 0xff00ff);
+
+                // Tracer Rockets (乱れ撃ち)
+                // 既存のパーティクルロケットを一部置き換え、圧倒的な量を
+                createTracerRocket(0, -20, 200, 1.5);
+                createTracerRocket(0, -20, 300, 3.5);
+
+
+                // 煙の生成
+                createSmoke();
+
+                this.currentFireworks = this.currentFireworks || [];
+                this.currentFireworks.push({ mesh: mainGroup });
+            }
+
+            createParticleGroup(name, vsId, fsId, zOffset) {
+                let count = 15000;
+                if (name === 'rain') count = 25000;
+                if (name === 'rain_splash') count = 5000;
+                if (name === 'seaspray') count = 5000;
+
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const scales = [];
+                const randoms = [];
+
+                for (let i = 0; i < count; i++) {
+                    // 季節ごとに適切な範囲で散らす
+                    const isWinter = name === 'winter';
+                    const isRain = name === 'rain';
+
+                    let spreadX = 150;
+                    let spreadY = 50;
+                    let spreadZ = 150; // デフォルト（夏セクションと重ならない）
+
+                    if (isWinter) {
+                        spreadX = 300;
+                        spreadY = 400;
+                        spreadZ = 300;
+                    } else if (isRain) {
+                        spreadX = 200;
+                        spreadY = 180;
+                        spreadZ = 250; // 五月雨セクション内に収める
+                    }
+
+                    const x = (Math.random() - 0.5) * spreadX;
+                    const y = (Math.random() - 0.5) * spreadY;
+                    const z = (Math.random() - 0.5) * spreadZ;
+
+                    positions.push(x, y, z);
+                    scales.push(Math.random() * 2.0 + 0.5);
+                    randoms.push(Math.random(), Math.random(), Math.random());
+                }
+
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('aScale', new THREE.Float32BufferAttribute(scales, 1));
+                geometry.setAttribute('aRandom', new THREE.Float32BufferAttribute(randoms, 3));
+
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        uTime: { value: 0 },
+                        uPixelRatio: { value: this.renderer.getPixelRatio() },
+                        uBoatZ: { value: 0 },
+                        uOpacity: { value: 1 }
+                    },
+                    vertexShader: document.getElementById(vsId).textContent,
+                    fragmentShader: document.getElementById(fsId).textContent,
+                    transparent: true,
+                    depthWrite: false,
+                    blending: name.includes('mist') ? THREE.NormalBlending : THREE.AdditiveBlending
+                });
+
+                const mesh = new THREE.Points(geometry, material);
+                mesh.position.set(0, 0, zOffset);
+                this.scene.add(mesh);
+
+                if (name === 'rain') {
+                    this.rainParticles = mesh;
+                    this.rainMaterialForColor = material;
+                }
+                if (name === 'seaspray') {
+                    this.seasprayMesh = mesh;
+                    this.seasprayMaterial = material;
+                }
+                if (name === 'winter') {
+                    this.winterMesh = mesh;
+                    this.winterMaterial = material;
+                }
+
+                this.materials.push(material);
+            }
+
+            createMonument(type, zPos) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const colors = [];
+                const scales = [];
+                const randoms = [];
+                const aColor = [];
+
+                let count = 0;
+
+                if (type === 'spring') {
+                    // 春のアート [NEW DESIGN]: 桜並木と花筏
+                    count = 45000;
+                    const length = 400;
+
+                    for (let i = 0; i < count; i++) {
+                        const z = (Math.random() - 0.5) * length;
+
+                        // X: 川幅を空ける (中央 ±20 は川)
+                        let x = (Math.random() - 0.5) * 200;
+                        if (Math.abs(x) < 20) {
+                            x = (x > 0 ? 20 : -20) + x;
+                        }
+
+                        let y;
+                        const typeRnd = Math.random();
+
+                        if (Math.abs(x) < 40 && typeRnd < 0.3) {
+                            // 花筏ゾーン (川の水面)
+                            x = (Math.random() - 0.5) * 40;
+                            y = (Math.random() - 0.5) * 2.0;
+                        } else if (typeRnd < 0.6) {
+                            // 木々 (Trees)
+                            y = Math.pow(Math.random(), 2.0) * 60.0 + 5.0;
+                        } else {
+                            // 散る花びら (Air)
+                            x = (Math.random() - 0.5) * 200;
+                            y = Math.random() * 80.0;
+                        }
+
+                        // カラーパレット: 桜色
+                        const tone = Math.random();
+                        let r, g, b;
+                        if (tone < 0.5) { r = 1.0; g = 0.8; b = 0.9; }
+                        else if (tone < 0.8) { r = 1.0; g = 0.6; b = 0.75; }
+                        else { r = 1.0; g = 0.95; b = 0.95; }
+
+                        positions.push(x, y, z);
+                        colors.push(r, g, b);
+                        scales.push(Math.random() * 3.0 + 1.0);
+                        randoms.push(Math.random(), Math.random(), Math.random());
+                    }
+
+                } else if (type === 'hydrangea') {
+                    // 抽象表現: "色彩の雲" (Color Clouds) [REDESIGNED]
+                    // 輪郭を持たず、空間に広がるボケ（Bokeh）として表現する
+                    count = 6000;
+
+                    const spreadX = 180;
+                    const spreadZ = 300;
+
+                    for (let i = 0; i < count; i++) {
+                        // 位置: 空間全体に霧のように拡散させる
+                        const x = (Math.random() - 0.5) * spreadX;
+                        const z = (Math.random() - 0.5) * spreadZ;
+
+                        // 高さ: 地面から湧き上がり、空へ溶ける
+                        const y = Math.pow(Math.random(), 2.0) * 60.0; // 下の方に溜まる
+
+                        // Perlin Noise的な色の配置（位置による色の変化）
+                        const noiseVal = Math.sin(x * 0.05) + Math.cos(z * 0.05); // 簡易ノイズ
+
+                        let r, g, b;
+                        // 色彩パレット: 深い藍色 〜 鮮やかな紫 〜 儚いピンク
+                        if (noiseVal < -0.5) {
+                            // Deep Blue / Indigo
+                            r = 0.1; g = 0.2; b = 0.9;
+                        } else if (noiseVal < 0.5) {
+                            // Violet / Purple
+                            r = 0.6; g = 0.2; b = 1.0 - (Math.random() * 0.3);
+                        } else {
+                            // Pale Pink / Magenta
+                            r = 0.9; g = 0.5; b = 0.8;
+                        }
+
+                        // さらにランダムな揺らぎを加える
+                        r += (Math.random() - 0.5) * 0.1;
+                        g += (Math.random() - 0.5) * 0.1;
+                        b += (Math.random() - 0.5) * 0.1;
+
+                        positions.push(x, y, z);
+                        colors.push(r, g, b);
+
+                        const sizeBase = Math.random();
+                        scales.push(sizeBase * 6.0 + 2.0); // 非常に大きい
+
+                        randoms.push(Math.random(), Math.random(), Math.random());
+                    }
+
+                } else if (type === 'autumn_leaves') {
+                    // 森のトンネル (Forest Tunnel)
+                    // アーチを延長し、密度を高めて深い森のトンネルを作る
+                    const tunnelCount = 15000;
+                    for (let i = 0; i < tunnelCount; i++) {
+                        const zLocal = (Math.random() - 0.5) * 500; // 500m long approach
+
+                        // Tunnel Cross-section: Organic Arch
+                        const angle = Math.random() * Math.PI;
+                        const r = 20.0 + Math.random() * 30.0; // Thick canopy
+
+                        const x = Math.cos(angle) * r;
+                        const y = Math.sin(angle) * r;
+                        const z = zLocal;
+
+                        // Autumn Colors - 絵画的な美しさのため多彩に
+                        const rnd = Math.random();
+                        let rC, gC, bC;
+                        // Gradient: Green (Start/+Z) -> Red (Exit/-Z)
+                        const tGrad = (zLocal + 250.0) / 500.0;
+
+                        if (tGrad > 0.6) {
+                            // 緑ゾーン - 絵画的な変化を加える
+                            if (rnd < 0.6) {
+                                // 基本の緑
+                                rC = 0.15 + Math.random() * 0.1;
+                                gC = 0.7 + Math.random() * 0.25;
+                                bC = 0.15 + Math.random() * 0.1;
+                            } else if (rnd < 0.75) {
+                                // 深いエメラルド
+                                rC = 0.0; gC = 0.6; bC = 0.4;
+                            } else if (rnd < 0.85) {
+                                // 黄緑色のアクセント
+                                rC = 0.5; gC = 0.8; bC = 0.1;
+                            } else if (rnd < 0.92) {
+                                // 淡いシアン (木漏れ日)
+                                rC = 0.3; gC = 0.7; bC = 0.6;
+                            } else {
+                                // 微かな紫 (花のアクセント)
+                                rC = 0.5; gC = 0.3; bC = 0.6;
+                            }
+                        } else if (tGrad > 0.3) {
+                            // Transition: Green -> Yellow -> Orange
+                            const mix = (0.6 - tGrad) / 0.3;
+                            if (rnd < 0.7) {
+                                rC = 0.2 + 0.8 * mix;
+                                gC = 0.9 - 0.2 * mix;
+                                bC = 0.15 - 0.1 * mix;
+                            } else if (rnd < 0.85) {
+                                // 琥珀色
+                                rC = 0.9; gC = 0.6; bC = 0.1;
+                            } else {
+                                // ゴールド
+                                rC = 1.0; gC = 0.75; bC = 0.2;
+                            }
+                        } else {
+                            // 赤ゾーン - 燃えるような赤とアクセント
+                            if (rnd < 0.6) {
+                                rC = 1.0; gC = 0.15 + Math.random() * 0.15; bC = 0.05;
+                            } else if (rnd < 0.8) {
+                                // 深紅
+                                rC = 0.7; gC = 0.05; bC = 0.1;
+                            } else if (rnd < 0.9) {
+                                // オレンジ
+                                rC = 1.0; gC = 0.4; bC = 0.05;
+                            } else {
+                                // マゼンタ (アクセント)
+                                rC = 0.8; gC = 0.1; bC = 0.3;
+                            }
+                        }
+
+                        // Dim lower leaves for depth
+                        if (y < 15.0) { rC *= 0.7; gC *= 0.7; bC *= 0.7; }
+
+                        positions.push(x, y, z);
+                        colors.push(rC, gC, bC);
+                        scales.push(Math.random() * 4.0 + 1.0);
+                        randoms.push(Math.random(), Math.random(), Math.random());
+                    }
+
+                    // 水面の落ち葉 (Reflective Water Leaves)
+                    const waterCount = 5000;
+                    for (let i = 0; i < waterCount; i++) {
+                        const zLocal = (Math.random() - 0.5) * 500;
+                        const x = (Math.random() - 0.5) * 90; // Wide river scatter
+                        const y = -10.0 + Math.random() * 2.0; // Water surface
+
+                        const rnd = Math.random();
+                        let rC, gC, bC;
+                        // Gradient Water
+                        const tGrad = (zLocal + 250.0) / 500.0;
+                        if (tGrad > 0.5) {
+                            rC = 0.3; gC = 0.9; bC = 0.3; // Green
+                        } else {
+                            rC = 0.9; gC = 0.4; bC = 0.1; // Red/Orange
+                        }
+
+                        positions.push(x, y, zLocal);
+                        colors.push(rC, gC, bC);
+                        scales.push(Math.random() * 3.0 + 1.0);
+                        randoms.push(Math.random(), Math.random(), Math.random());
+                    }
+
+                } else if (type === 'torii_moon') {
+                    // 1. Torii (Standard CPU Particles)
+                    const tPos = []; const tCol = []; const tScl = []; const tRnd = [];
+                    const addP = (x, y, z, r, g, b) => {
+                        tPos.push(x + (Math.random() - 0.5), y + (Math.random() - 0.5), z + (Math.random() - 0.5));
+                        tCol.push(r, g, b); tScl.push(Math.random() * 2 + 1);
+                        tRnd.push(Math.random(), Math.random(), Math.random());
+                    };
+                    // Torii Logic
+                    for (let i = 0; i < 2000; i++) {
+                        let r = 1.0, g = 0.2, b = 0.0;
+                        const rnd = Math.random();
+                        if (rnd < 0.4) {
+                            const isLeft = Math.random() > 0.5;
+                            addP(isLeft ? -15 : 15, Math.random() * 30, 0, r, g, b);
+                        } else if (rnd < 0.6) {
+                            addP((Math.random() - 0.5) * 36, 22, 0, r, g, b);
+                        } else {
+                            const t = Math.random();
+                            const curve = Math.pow(Math.abs(t - 0.5) * 2, 2) * 2.0;
+                            addP((t - 0.5) * 50, 30 + curve, 0, r, g, b);
+                        }
+                    }
+                    const tGeo = new THREE.BufferGeometry();
+                    tGeo.setAttribute('position', new THREE.Float32BufferAttribute(tPos, 3));
+                    tGeo.setAttribute('aColor', new THREE.Float32BufferAttribute(tCol, 3));
+                    tGeo.setAttribute('aScale', new THREE.Float32BufferAttribute(tScl, 1));
+                    tGeo.setAttribute('aRandom', new THREE.Float32BufferAttribute(tRnd, 3));
+                    const tMat = new THREE.ShaderMaterial({
+                        uniforms: { uTime: { value: 0 }, uPixelRatio: { value: this.renderer.getPixelRatio() }, uOpacity: { value: 1 } },
+                        vertexShader: document.getElementById('vs-monument').textContent,
+                        fragmentShader: document.getElementById('fs-common').textContent,
+                        transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+                    });
+                    const tMesh = new THREE.Points(tGeo, tMat);
+                    tMesh.position.set(0, WORLD_CONFIG.waterLevel + 5, zPos);
+                    this.scene.add(tMesh);
+                    this.materials.push(tMat);
+                    this.toriiMesh = tMesh;
+                    this.toriiMaterial = tMat;
+
+                    // 2. Moon (Wireframe Sphere with Gradient)
+                    const mGeo = new THREE.WireframeGeometry(new THREE.SphereGeometry(25, 32, 32));
+
+                    // 頂点カラーを追加（立体感のためのグラデーション）
+                    const positions = mGeo.attributes.position.array;
+                    const moonColors = [];
+                    for (let i = 0; i < positions.length; i += 3) {
+                        const x = positions[i];
+                        const y = positions[i + 1];
+                        const z = positions[i + 2];
+
+                        // ライト方向（右上手前から照らす）
+                        const lightDir = { x: 0.5, y: 0.6, z: 0.6 };
+                        const len = Math.sqrt(x * x + y * y + z * z);
+                        const nx = x / len, ny = y / len, nz = z / len;
+                        const dot = nx * lightDir.x + ny * lightDir.y + nz * lightDir.z;
+                        const light = Math.max(0, dot);
+
+                        // グラデーション: 全体的に濃い金色、影側は暗めの金
+                        const r = 0.9 + light * 0.4; // Deep Gold
+                        const g = 0.65 + light * 0.35;
+                        const b = 0.1 + light * 0.1;
+
+                        moonColors.push(r, g, b);
+                    }
+                    mGeo.setAttribute('color', new THREE.Float32BufferAttribute(moonColors, 3));
+
+                    const mMat = new THREE.LineBasicMaterial({
+                        vertexColors: true,
+                        transparent: true,
+                        opacity: 0.85,
+                        blending: THREE.AdditiveBlending
+                    });
+
+                    const mMesh = new THREE.LineSegments(mGeo, mMat);
+                    mMesh.position.set(0, WORLD_CONFIG.waterLevel + 50, zPos - 80);
+
+                    this.scene.add(mMesh);
+                    this.moonMesh = mMesh;
+
+                    // 3. CLOUDS [REDESIGNED] - 月の周辺に漂う雲
+                    // 数を増やし、層を厚くして奥行きを出す
+                    const cPos = []; const cScl = []; const cRnd = [];
+                    const cloudCount = 200; // 30 -> 200 に増量
+
+                    for (let i = 0; i < cloudCount; i++) {
+                        // 配置エリア: 月と同じ深度に雲を配置
+                        // 月の位置は (0, +50, -80) 相対
+
+                        // Z: 月の位置(-80)を中心に前後に分布
+                        // 雲の合間に月が浮かんで見えるように
+                        const zOff = -80.0 + (Math.random() - 0.5) * 40.0;
+
+                        // Y: 月の高さ(50)を中心に上下にばらつく
+                        const yOff = 50.0 + (Math.random() - 0.5) * 50.0;
+
+                        // X: 画面全体を覆うように広く
+                        const xOff = (Math.random() - 0.5) * 180.0;
+
+                        cPos.push(xOff, yOff, zOff);
+
+                        // サイズ: 月の周囲に大きめの雲
+                        const sizeBase = Math.random();
+                        cScl.push(sizeBase * 5.0 + 4.0);
+
+                        // Randoms: x=速度差, y=位相ズレ, z=不透明度係数
+                        cRnd.push(Math.random(), Math.random(), Math.random());
+                    }
+
+                    const cGeo = new THREE.BufferGeometry();
+                    cGeo.setAttribute('position', new THREE.Float32BufferAttribute(cPos, 3));
+                    cGeo.setAttribute('aScale', new THREE.Float32BufferAttribute(cScl, 1));
+                    cGeo.setAttribute('aRandom', new THREE.Float32BufferAttribute(cRnd, 3));
+
+                    const cMat = new THREE.ShaderMaterial({
+                        uniforms: { uTime: { value: 0 }, uPixelRatio: { value: this.renderer.getPixelRatio() }, uOpacity: { value: 1 } },
+                        vertexShader: document.getElementById('vs-cloud').textContent,
+                        fragmentShader: document.getElementById('fs-cloud').textContent,
+                        transparent: true,
+                        depthWrite: false,
+                        blending: THREE.NormalBlending
+                    });
+
+                    const cMesh = new THREE.Points(cGeo, cMat);
+                    cMesh.position.set(0, WORLD_CONFIG.waterLevel + 5, zPos);
+                    this.scene.add(cMesh);
+                    this.materials.push(cMat);
+                    this.cloudMesh = cMesh;
+                    this.cloudMaterial = cMat;
+
+                    return;
+
+                } else if (type === 'xmas_tree') {
+                    // --- NEW: 聖夜の結晶樹 (Crystalline Tree) ---
+                    const heightMax = 250.0;
+                    const types = []; // aType attribute for particle type
+
+                    // 1. Crystal Leaves (Main Body) - 30,000 pts
+                    const leavesCount = 30000;
+                    for (let i = 0; i < leavesCount; i++) {
+                        const h = Math.random() * heightMax;
+                        const hNorm = h / heightMax;
+                        const maxR = 90.0 * (1.0 - hNorm);
+                        const rLocal = Math.random() * maxR;
+                        const theta = Math.random() * Math.PI * 2;
+
+                        positions.push(Math.cos(theta) * rLocal, h, Math.sin(theta) * rLocal);
+                        colors.push(1.0, 1.0, 1.0);
+                        scales.push(Math.random() * 2.0 + 0.5);
+                        randoms.push(Math.random(), Math.random(), Math.random());
+                        types.push(0.0); // Type 0: Leaves
+                    }
+
+                    // 2. Ornaments (Light Spheres) - 2,000 pts
+                    const ornCount = 2000;
+                    for (let i = 0; i < ornCount; i++) {
+                        const h = Math.random() * heightMax;
+                        const hNorm = h / heightMax;
+                        const maxR = 95.0 * (1.0 - hNorm);
+                        const rLocal = maxR - Math.random() * 10.0;
+                        const theta = Math.random() * Math.PI * 2;
+
+                        positions.push(Math.cos(theta) * rLocal, h, Math.sin(theta) * rLocal);
+                        colors.push(1.0, 1.0, 1.0);
+                        scales.push(Math.random() * 5.0 + 3.0);
+                        randoms.push(Math.random(), Math.random(), Math.random());
+                        types.push(1.0); // Type 1: Ornaments
+                    }
+
+                    // 3. Spiral Aura (Energy Flow) - 5,000 pts
+                    const spiralCount = 5000;
+                    for (let i = 0; i < spiralCount; i++) {
+                        positions.push(0, 0, 0); // Shader calculates pos
+                        colors.push(1.0, 1.0, 1.0);
+                        scales.push(Math.random() * 3.0 + 1.0);
+                        randoms.push(Math.random(), Math.random(), Math.random());
+                        types.push(2.0); // Type 2: Spiral
+                    }
+
+                    count = positions.length / 3;
+
+                    // Create geometry with aType attribute
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    geometry.setAttribute('aColor', new THREE.Float32BufferAttribute(colors, 3));
+                    geometry.setAttribute('aScale', new THREE.Float32BufferAttribute(scales, 1));
+                    geometry.setAttribute('aRandom', new THREE.Float32BufferAttribute(randoms, 3));
+                    geometry.setAttribute('aType', new THREE.Float32BufferAttribute(types, 1));
+
+                    const treeMaterial = new THREE.ShaderMaterial({
+                        uniforms: {
+                            uTime: { value: 0 },
+                            uPixelRatio: { value: this.renderer.getPixelRatio() },
+                            uOpacity: { value: 0 } // 初期は透明
+                        },
+                        vertexShader: document.getElementById('vs-tree').textContent,
+                        fragmentShader: document.getElementById('fs-tree').textContent,
+                        transparent: true,
+                        depthWrite: false,
+                        blending: THREE.AdditiveBlending
+                    });
+
+                    const treeMesh = new THREE.Points(geometry, treeMaterial);
+                    treeMesh.position.set(0, WORLD_CONFIG.waterLevel + 5, zPos);
+                    this.scene.add(treeMesh);
+                    this.materials.push(treeMaterial);
+                    this.xmasTreeMesh = treeMesh; // Store reference for visibility control
+                    this.xmasTreeMaterial = treeMaterial; // Store material for opacity control
+                    return; // Early return for xmas_tree
+                }
+
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('aColor', new THREE.Float32BufferAttribute(colors, 3));
+                geometry.setAttribute('aScale', new THREE.Float32BufferAttribute(scales, 1));
+                geometry.setAttribute('aRandom', new THREE.Float32BufferAttribute(randoms, 3));
+
+                // シェーダー選択
+                let vsId = 'vs-monument';
+                let fsId = 'fs-common';
+                if (type === 'spring') vsId = 'vs-spring';
+                if (type === 'hydrangea') {
+                    vsId = 'vs-hydrangea';
+                    fsId = 'fs-hydrangea';
+                }
+
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        uTime: { value: 0 },
+                        uPixelRatio: { value: this.renderer.getPixelRatio() },
+                        uBoatZ: { value: 0 },
+                        uOpacity: { value: 1 }
+                    },
+                    vertexShader: document.getElementById(vsId).textContent,
+                    fragmentShader: document.getElementById(fsId).textContent,
+                    transparent: true,
+                    depthWrite: false,
+                    blending: THREE.AdditiveBlending
+                });
+
+                const mesh = new THREE.Points(geometry, material);
+                mesh.position.set(0, WORLD_CONFIG.waterLevel + 5, zPos);
+                this.scene.add(mesh);
+
+                if (type === 'hydrangea') {
+                    this.hydrangeaMesh = mesh;
+                    this.hydrangeaMaterial = material;
+                }
+                if (type === 'autumn_leaves') {
+                    this.autumnMesh = mesh;
+                    this.autumnMaterial = material;
+                }
+
+                this.materials.push(material);
+            }
+
+            addLights() {
+                const ambientLight = new THREE.AmbientLight(0x222222);
+                this.scene.add(ambientLight);
+                const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+                dirLight.position.set(-1, 1, 0.5);
+                this.scene.add(dirLight);
+            }
+
+            // --- 画像アップロード機能 改 ---
+            handleImageUpload(input) {
+                if (input.files && input.files[0]) {
+                    const file = input.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const loader = new THREE.TextureLoader();
+                        loader.load(e.target.result, (texture) => {
+                            this.pendingTexture = texture;
+                            this.showSeasonSelector();
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                    input.value = '';
+                }
+            }
+
+            // --- 複数画像/動画アップロード機能 ---
+            handleMultiImageUpload(input) {
+                if (!input.files || input.files.length === 0) return;
+                if (!this.allImages) this.allImages = [];
+
+                const MAX_IMAGES = 6;
+                const currentCount = this.allImages.length;
+                const remaining = MAX_IMAGES - currentCount;
+
+                if (remaining <= 0) {
+                    this.showMultiImageModal();
+                    input.value = '';
+                    return;
+                }
+
+                const files = Array.from(input.files).slice(0, remaining);
+                const allSeasons = ['spring', 'rain', 'summer', 'autumn', 'winter', 'finale'];
+                const usedSeasons = this.allImages.map(img => img.season);
+                const availableSeasons = allSeasons.filter(s => !usedSeasons.includes(s));
+                let loaded = 0;
+
+                files.forEach((file, index) => {
+                    const isVideo = file.type.startsWith('video/');
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const season = availableSeasons[index] || 'spring';
+                        this.allImages.push({ dataUrl: e.target.result, season, isVideo });
+                        loaded++;
+                        if (loaded === files.length) {
+                            this.showMultiImageModal();
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+                input.value = '';
+            }
+
+            showMultiImageModal() {
+                const modal = document.getElementById('multi-image-modal');
+                const list = document.getElementById('image-list');
+                list.innerHTML = '';
+                const seasons = [
+                    { value: 'spring', label: '春' },
+                    { value: 'rain', label: '梅雨' },
+                    { value: 'summer', label: '夏' },
+                    { value: 'autumn', label: '秋' },
+                    { value: 'winter', label: '冬' },
+                    { value: 'finale', label: '最後の1枚' }
+                ];
+
+                const countDisplay = document.getElementById('modal-image-count');
+                if (countDisplay) countDisplay.textContent = `${this.allImages.length} / 6 枚`;
+
+                this.allImages.forEach((img, i) => {
+                    const item = document.createElement('div');
+                    item.className = 'image-item';
+                    const options = seasons.map(s => 
+                        `<option value="${s.value}"${img.season === s.value ? ' selected' : ''}>${s.label}</option>`
+                    ).join('');
+                    const mediaTag = img.isVideo 
+                        ? `<video src="${img.dataUrl}" muted loop autoplay style="max-width:120px;max-height:100px;"></video>`
+                        : `<img src="${img.dataUrl}" alt="photo ${i + 1}">`;
+                    item.innerHTML = `
+                        <button class="delete-btn" onclick="app.removeImage(${i})" title="削除">×</button>
+                        ${mediaTag}
+                        <select onchange="app.updateImageSeason(${i}, this.value)">${options}</select>
+                    `;
+                    list.appendChild(item);
+                });
+
+                modal.style.display = 'flex';
+                requestAnimationFrame(() => modal.classList.add('visible'));
+            }
+
+            removeImage(index) {
+                if (this.allImages && this.allImages[index] !== undefined) {
+                    this.allImages.splice(index, 1);
+                    this.showMultiImageModal();
+                    this.updateSetupStatus();
+                }
+            }
+
+            updateImageSeason(index, season) {
+                if (this.allImages && this.allImages[index]) {
+                    this.allImages[index].season = season;
+                }
+            }
+
+            closeMultiImageModal() {
+                const modal = document.getElementById('multi-image-modal');
+                modal.classList.remove('visible');
+                setTimeout(() => { modal.style.display = 'none'; }, 500);
+            }
+
+            placeAllPhotos() {
+                if (!this.allImages || this.allImages.length === 0) return;
+                this.uploadedImages.forEach(mesh => {
+                    this.scene.remove(mesh);
+                    if (mesh.userData.video) mesh.userData.video.pause();
+                });
+                this.uploadedImages = [];
+                if (this.finaleMesh) {
+                    this.scene.remove(this.finaleMesh);
+                    this.finaleMesh = null;
+                }
+                this.uploadCounters = { spring: 0, rain: 0, summer: 0, autumn: 0, winter: 0 };
+
+                const loader = new THREE.TextureLoader();
+                let count = 0;
+                const total = this.allImages.length;
+
+                this.allImages.forEach(img => {
+                    if (img.isVideo) {
+                        const video = document.createElement('video');
+                        video.src = img.dataUrl;
+                        video.loop = true;
+                        video.muted = true;
+                        video.playsInline = true;
+                        video.onloadeddata = () => {
+                            video.play();
+                            const texture = new THREE.VideoTexture(video);
+                            texture.minFilter = THREE.LinearFilter;
+                            texture.magFilter = THREE.LinearFilter;
+                            if (img.season === 'finale') {
+                                this.createFinalePhoto(texture, video);
+                            } else {
+                                this.placePhotoWithTexture(img.season, texture, video);
+                            }
+                            count++;
+                            if (count === total) {
+                                this.closeMultiImageModal();
+                                this.updateSetupStatus();
+                            }
+                        };
+                        video.load();
+                    } else {
+                        loader.load(img.dataUrl, (texture) => {
+                            if (img.season === 'finale') {
+                                this.createFinalePhoto(texture);
+                            } else {
+                                this.placePhotoWithTexture(img.season, texture);
+                            }
+                            count++;
+                            if (count === total) {
+                                this.closeMultiImageModal();
+                                this.updateSetupStatus();
+                            }
+                        });
+                    }
+                });
+            }
+
+            updateSetupStatus() {
+                const photoDisplay = document.getElementById('photo-count-display');
+                const bgmDisplay = document.getElementById('bgm-count-display');
+
+                if (photoDisplay) {
+                    const total = this.allImages ? this.allImages.length : 0;
+                    photoDisplay.textContent = total > 0 ? `${total}枚設定済み` : '最大6枚まで';
+                }
+                if (bgmDisplay) {
+                    bgmDisplay.textContent = this.currentBgm ? '設定済み' : '未設定';
+                }
+            }
+
+            placePhotoWithTexture(season, texture, video = null) {
+                const idx = this.uploadCounters[season] || 0;
+                this.uploadCounters[season] = idx + 1;
+                this.createPhotoObj(texture, season, idx, video);
+            }
+
+            // --- フィナーレ画像処理 ---
+            handleFinaleImageUpload(input) {
+                if (input.files && input.files[0]) {
+                    const file = input.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const loader = new THREE.TextureLoader();
+                        loader.load(e.target.result, (texture) => {
+                            this.createFinalePhoto(texture);
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                    input.value = '';
+                }
+            }
+
+            createFinalePhoto(texture, video = null) {
+                if (this.finaleMesh) {
+                    this.scene.remove(this.finaleMesh);
+                    if (this.finaleMesh.geometry) this.finaleMesh.geometry.dispose();
+                    if (this.finaleMesh.material) this.finaleMesh.material.dispose();
+                    if (this.finaleVideo) this.finaleVideo.pause();
+                }
+                if (this.finaleLights) {
+                    this.finaleLights.forEach(l => this.scene.remove(l));
+                    this.finaleLights = [];
+                }
+
+                this.finaleVideo = video;
+                const image = texture.image;
+                const aspect = (image.videoWidth || image.width) / (image.videoHeight || image.height);
+                const height = 120; // かなり大きく
+                const width = height * aspect;
+
+                const geometry = new THREE.PlaneGeometry(width, height);
+                // BasicMaterialに戻して確実に表示させる
+                const material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    transparent: true,
+                    side: THREE.DoubleSide,
+                    opacity: 0,
+                    fog: false // Fog prevented brightness. Disable it.
+                });
+
+                // 状態リセット
+                this.isFinaleStopped = false;
+                this.finaleLightIntensity = 0;
+
+                const mesh = new THREE.Mesh(geometry, material);
+                // FINALE位置に配置 (黒背景に浮かぶ)
+                mesh.position.set(0, 60, Z_POS.FINALE);
+
+                // フローティングアニメーション用に保存
+                this.finaleMesh = mesh;
+                this.scene.add(mesh);
+
+                // 演出: 左右からのスポットライト (白飛びしない程度)
+                this.finaleLights = [];
+
+                const createSpot = (x, zOffset) => {
+                    const spot = new THREE.SpotLight(0xffffff, 0); // 初期強度0 (スクリプトで制御)
+                    spot.position.set(x, 10, Z_POS.FINALE + zOffset);
+                    spot.target = mesh;
+                    spot.angle = Math.PI / 4;
+                    spot.penumbra = 0.5;
+                    spot.distance = 500;
+                    this.scene.add(spot);
+                    this.finaleLights.push(spot);
+                };
+
+                // 左手前と右手前から照射
+                createSpot(-150, 200);
+                createSpot(150, 200);
+            }
+
+            showSeasonSelector() {
+                const selector = document.getElementById('season-selector');
+                selector.style.display = 'flex';
+                // フェードイン
+                requestAnimationFrame(() => {
+                    selector.classList.add('visible');
+                });
+            }
+
+            closeSeasonSelector() {
+                const selector = document.getElementById('season-selector');
+                selector.classList.remove('visible');
+                setTimeout(() => {
+                    selector.style.display = 'none';
+                    this.pendingTexture = null; // 破棄
+                }, 500);
+            }
+
+            placePhoto(season) {
+                if (!this.pendingTexture) return;
+
+                // 選択された季節に基づいて配置
+                this.createPhotoObj(this.pendingTexture, season);
+
+                // モーダルを閉じる
+                const selector = document.getElementById('season-selector');
+                selector.classList.remove('visible');
+                setTimeout(() => {
+                    selector.style.display = 'none';
+                    this.pendingTexture = null;
+                }, 500);
+            }
+
+            createPhotoObj(texture, season, index = 0, video = null) {
+                const img = texture.image;
+                const imgAspect = (img.videoWidth || img.width) / (img.videoHeight || img.height);
+                const baseHeight = 20;
+                const geometry = new THREE.PlaneGeometry(baseHeight * imgAspect, baseHeight);
+
+                const material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    transparent: true,
+                    opacity: 1.0,
+                    side: THREE.DoubleSide,
+                    color: 0xBABABA
+                });
+
+                const mesh = new THREE.Mesh(geometry, material);
+
+                // --- 固定座標配置 (Absolute Position) ---
+                // 各季節に対して絶対座標を定義
+                const FIXED_Z = {
+                    spring: 30,
+                    rain: -400,
+                    summer: -850,
+                    autumn: -1220,  // 紅葉トンネル後半（鳥居より手前）
+                    winter: -1850,
+                    random: -1000
+                };
+
+                // 複数画像の場合、indexに応じてZ方向にずらす
+                const zBase = FIXED_Z[season] || -500;
+                const zOffset = (index % 5) * 30;  // 5枚ごとにループ、30m間隔
+                const zPos = zBase - zOffset;
+
+                // X座標: 決定論的パターン (Center, Left, Right...)
+                const xPatterns = [0, -18, 18, -35, 35, -10, 10];
+                const xPos = xPatterns[index % xPatterns.length];
+
+                mesh.position.set(xPos, 15, zPos);
+
+                mesh.userData = {
+                    initialY: 15,
+                    randomOffset: index * 17,
+                    season: season,
+                    video: video
+                };
+
+                this.scene.add(mesh);
+                this.uploadedImages.push(mesh);
+            }
+
+
+            removeSeasonImages(season) {
+                // その季節の既存画像を削除
+                const toRemove = this.uploadedImages.filter(mesh => mesh.userData.season === season);
+                toRemove.forEach(mesh => {
+                    this.scene.remove(mesh);
+                    if (mesh.geometry) mesh.geometry.dispose();
+                    if (mesh.material) {
+                        if (mesh.material.map) mesh.material.map.dispose();
+                        mesh.material.dispose();
+                    }
+                });
+                // 配列を更新
+                this.uploadedImages = this.uploadedImages.filter(mesh => mesh.userData.season !== season);
+            }
+
+            togglePause() {
+                this.isPaused = !this.isPaused;
+                const btn = document.getElementById('btn-cruise');
+                btn.textContent = this.isPaused ? "動" : "停";
+                btn.classList.toggle('active');
+            }
+
+            toggleViewControl() {
+                const btn = document.getElementById('btn-face');
+                this.isViewControl = !this.isViewControl;
+
+                if (this.isViewControl) {
+                    btn.textContent = "視点操作:ON (Esc)";
+                    btn.classList.add('active');
+                    document.body.style.cursor = 'none';
+                } else {
+                    btn.textContent = "視点操作:OFF";
+                    btn.classList.remove('active');
+                    document.body.style.cursor = 'default';
+                    this.targetYaw = 0;
+                    this.targetPitch = 0;
+                    this.currentYaw = 0;
+                    this.currentPitch = 0;
+                }
+            }
+
+            onKeyDown(e) {
+                if (e.key === 'Escape' && this.isViewControl) {
+                    this.toggleViewControl();
+                }
+            }
+
+            onMouseMove(e) {
+                if (!this.isViewControl) return;
+                // Normalized coordinates: -1 to 1
+                this.mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+                this.mouseY = (e.clientY / window.innerHeight) * 2 - 1;
+
+                this.targetYaw = -this.mouseX * 0.5; // 左右
+                this.targetPitch = -this.mouseY * 0.3; // 上下
+            }
+
+            onTouchMove(e) {
+                if (!this.isViewControl) return;
+                if (e.touches.length > 0) {
+                    const touch = e.touches[0];
+                    this.mouseX = (touch.clientX / window.innerWidth) * 2 - 1;
+                    this.mouseY = (touch.clientY / window.innerHeight) * 2 - 1;
+                    this.targetYaw = -this.mouseX * 0.5;
+                    this.targetPitch = -this.mouseY * 0.3;
+                }
+            }
+
+            changeSpeed() {
+                const btn = document.getElementById('btn-speed');
+
+                // Current is Normal(1.8)? -> Go Fast(3.0)
+                if (Math.abs(this.boatSpeed - 0.4) < 0.1) {
+                    this.boatSpeed = 0.9;
+                    btn.textContent = "速:三";
+                }
+                else if (this.boatSpeed > 0.6) {
+                    this.boatSpeed = 0.2;
+                    btn.textContent = "速:一";
+                }
+                else {
+                    this.boatSpeed = 0.4;
+                    btn.textContent = "速:二";
+                }
+                this.updateUI(this.boatZ);
+            }
+
+            warpTo(season) {
+                let targetZ = 0;
+                switch (season) {
+                    case 'spring': targetZ = 150; break; // アニメーション開始位置（画像が見える）
+                    case 'rain': targetZ = -200; break; // 梅雨セクション手前（画像が見える）
+                    case 'summer': targetZ = Z_POS.RAIN - 100; break;
+                    case 'autumn': targetZ = Z_POS.AUTUMN; break;
+                    case 'winter': targetZ = Z_POS.LANTERN - 100; break; // ランタン直後から開始
+                }
+
+                const canvas = document.getElementById('canvas-container');
+                canvas.style.transition = 'opacity 1s ease';
+                canvas.style.opacity = 0;
+
+                setTimeout(() => {
+                    this.boatZ = targetZ;
+                    canvas.style.opacity = 1;
+                    this.updateUI(this.boatZ);
+                }, 1000);
+            }
+
+            updateUI(z) {
+                const status = document.getElementById('status-text');
+                let seasonName = "";
+                let description = "";
+                let colorClass = "";
+
+                if (z > 100) {
+                    seasonName = "序章、春への誘い。";
+                    description = "光の予感";
+                    colorClass = "season-spring";
+                } else if (z > -100) {
+                    seasonName = "春、あけぼの。";
+                    description = "桜の奔流を抜けて";
+                    colorClass = "season-spring";
+                } else if (z > -450) {
+                    seasonName = "梅雨、五月雨。";
+                    description = "紫陽花に雨の音";
+                    colorClass = "season-rain";
+                } else if (z > -950) {
+                    seasonName = "夏、夢幻花火。";
+                    description = "海上の宴";
+                    colorClass = "season-summer";
+                } else if (z > -1200) {
+                    seasonName = "晩夏、緑陰の径。";
+                    description = "木漏れ日の揺らめき";
+                    colorClass = "season-summer";
+                } else if (z > -1450) {
+                    seasonName = "秋、月見の宴。";
+                    description = "鳥居と満月";
+                    colorClass = "season-autumn";
+                } else if (z > -1700) {
+                    seasonName = "晩秋、天灯流し。";
+                    description = "祈りは夜空へ";
+                    colorClass = "season-autumn";
+                } else if (z > -2050) {
+                    seasonName = "初冬、光の回廊。";
+                    description = "聖夜への誘い";
+                    colorClass = "season-winter";
+                } else {
+                    seasonName = "冬、聖なる夜。";
+                    description = "氷雪のツリー";
+                    colorClass = "season-winter";
+                }
+
+                let speedText = "ゆったりと流れる";
+                if (this.boatSpeed > 0.6) speedText = "瀬を早み、";
+                if (this.boatSpeed < 0.3) speedText = "たゆたうように、";
+                if (this.isPaused) speedText = "時は止まり、";
+
+                const newHTML = `${seasonName}<br>${speedText}${description}`;
+                if (status.innerHTML !== newHTML) {
+                    status.innerHTML = newHTML;
+                }
+
+                const h1 = document.querySelector('h1');
+                let seasonColor = "#fff";
+                if (colorClass === "season-spring") seasonColor = "#ffebef";
+                if (colorClass === "season-rain") seasonColor = "#e6f2ff";
+                if (colorClass === "season-summer") seasonColor = "#e0ffff";
+                if (colorClass === "season-autumn") seasonColor = "#ffecd1";
+                if (colorClass === "season-winter") seasonColor = "#f0f8ff";
+                h1.style.color = seasonColor;
+            }
+
+            handleBGMUpload(input) {
+                const file = input.files[0];
+                if (!file) return;
+
+                if (this.currentBgm) {
+                    this.currentBgm.pause();
+                    this.currentBgm = null;
+                }
+
+                const url = URL.createObjectURL(file);
+                this.currentBgm = new Audio(url);
+                this.currentBgm.loop = true;
+                this.currentBgm.volume = 0.5;
+
+                this.currentBgm.play().then(() => {
+                    // Playing
+                    const btn = document.querySelector('button[onclick*="bgm-upload"]');
+                    if (btn) btn.textContent = "♪";
+                }).catch(e => {
+                    console.error("Audio play failed", e);
+                    // StartScreenの場合はアラート出さない（まだクリックしてないので再生できない可能性が高い）
+                });
+            }
+
+            // --- Start Screen Handlers ---
+
+            backToTitle() {
+                this.isPaused = true;
+                this.boatZ = 150;
+
+                if (this.currentBgm) {
+                    this.currentBgm.pause();
+                    this.currentBgm.currentTime = 0;
+                }
+
+                if (this.finaleMesh) {
+                    this.finaleMesh.material.opacity = 0;
+                    this.isFinaleStopped = false;
+                    this.finaleLightIntensity = 0;
+                    if (this.finaleLights) {
+                        this.finaleLights.forEach(l => l.intensity = 0);
+                    }
+                }
+
+                const screen = document.getElementById('start-screen');
+                screen.style.display = 'flex';
+                void screen.offsetWidth;
+                screen.classList.remove('hidden');
+
+                this.closeSeasonSelector();
+            }
+
+            startTour() {
+                const screen = document.getElementById('start-screen');
+                screen.classList.add('hidden');
+
+                // BGM再生開始 (ユーザーインタラクション後なので確実に再生される)
+                if (this.currentBgm && this.currentBgm.paused) {
+                    this.currentBgm.play().catch(e => console.log("BGM Play Error", e));
+                }
+
+                // 少し待ってから開始
+                setTimeout(() => {
+                    screen.style.display = 'none';
+                    this.isPaused = false;
+
+                    // UI更新
+                    const btn = document.getElementById('btn-cruise');
+                    if (btn) btn.textContent = "動";
+                    if (btn) btn.classList.add('active');
+                }, 1000);
+            }
+
+            handleStartImageUpload(input, season) {
+                const files = input.files;
+                if (!files || files.length === 0) return;
+
+                // 既存の画像を削除（上書き）
+                this.removeSeasonImages(season);
+                // カウンターをリセット
+                this.uploadCounters[season] = 0;
+
+                // inputの親要素(label.season-btn)にスタイル適用
+                const btn = input.parentElement;
+                if (btn && btn.classList.contains('season-btn')) {
+                    btn.classList.add('uploaded');
+                    btn.querySelector('span').textContent = `${season === 'rain' ? '梅雨' : season === 'spring' ? '春' : season === 'summer' ? '夏' : season === 'autumn' ? '秋' : '冬'} (${files.length})`;
+                }
+
+                // 順番に処理して指定された季節に配置
+                Array.from(files).forEach((file) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const loader = new THREE.TextureLoader();
+                        loader.load(e.target.result, (texture) => {
+                            // Assign sequential index
+                            const idx = this.uploadCounters[season] || 0;
+                            this.uploadCounters[season] = idx + 1;
+                            this.createPhotoObj(texture, season, idx);
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            handleStartFinaleUpload(input) {
+                const file = input.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const loader = new THREE.TextureLoader();
+                    loader.load(e.target.result, (texture) => {
+                        this.createFinalePhoto(texture);
+                        this.updateSetupStatus();
+                    });
+                };
+                reader.readAsDataURL(file);
+                input.value = '';
+            }
+
+            handleStartBGMUpload(input) {
+                const file = input.files[0];
+                if (!file) return;
+
+                const url = URL.createObjectURL(file);
+                if (this.currentBgm) {
+                    this.currentBgm.pause();
+                }
+                this.currentBgm = new Audio(url);
+                this.currentBgm.loop = true;
+                this.currentBgm.volume = 0.5;
+                this.updateSetupStatus();
+                input.value = '';
+                // ここでは再生しない（Startボタン押下時に再生）
+            }
+
+            animate() {
+                requestAnimationFrame(this.animate.bind(this));
+
+                // デルタタイム計算 (PC性能に依存しない速度)
+                const now = performance.now();
+                const deltaTime = (now - this.lastTime) / 1000; // 秒に変換
+                this.lastTime = now;
+
+                // 60FPSを基準とした時間増分 (0.01 * 60 = 0.6/秒)
+                const timeIncrement = deltaTime * 0.6;
+                this.time += timeIncrement;
+
+                if (!this.isPaused) {
+                    // Auto-slowdown: Start 60 units before, End 10 units after (Quick recovery)
+                    let speedMult = 1.0;
+                    if (this.uploadedImages.length > 0) {
+                        for (const img of this.uploadedImages) {
+                            const diff = this.boatZ - img.position.z;
+                            // Approaching(+60) -> Passing(0) -> Leaving(-10)
+                            if (diff < 60 && diff > -10) {
+                                speedMult = 0.4;
+                                break;
+                            }
+                        }
+                    }
+
+                    // デルタタイムベースの移動 (60FPS時と同等の速度)
+                    const moveSpeed = this.boatSpeed * speedMult * deltaTime * 60;
+                    this.boatZ -= moveSpeed;
+
+                    if (this.boatZ < Z_POS.LIMIT) {
+                        this.boatZ = 150;
+                        // ループしたら速度をリセット（もし停止していたら）
+                        if (this.boatSpeed < 0.3) this.boatSpeed = 0.2;
+                        this.isFinaleStopped = false;
+                    }
+
+                    // --- FINALE AUTO STOP ---
+                    const stopZ = Z_POS.FINALE + 200; // Further ahead
+                    if (this.boatZ <= stopZ && !this.isFinaleStopped && this.boatZ > stopZ - 20) {
+                        this.isPaused = true;
+                        this.isFinaleStopped = true;
+                        this.finaleStopTimestamp = this.time; // Start animation
+                        this.boatZ = stopZ;
+
+                        const btn = document.getElementById('btn-cruise');
+                        if (btn) {
+                            btn.textContent = "完";
+                            btn.classList.remove('active');
+                        }
+                    }
+
+
+                }
+
+                // --- CAMERA MOTION CONTROLLER ---
+                // 穏やかなボートの動き（全ゾーン共通）
+
+                const bobX = Math.sin(this.time * 0.5) * 1.5;
+                const bobY = Math.sin(this.time * 0.8) * 0.5;
+
+                this.camera.position.x = bobX;
+                this.camera.position.y = 5 + bobY;
+                this.camera.position.z = this.boatZ;
+                this.camera.rotation.z = 0;
+                this.camera.lookAt(bobX * 0.5, 5, this.boatZ - 50);
+
+                // --- VIEW CONTROL OFFSET ---
+                if (this.isViewControl) {
+                    const lerpFactor = 0.08;
+                    this.currentYaw += (this.targetYaw - this.currentYaw) * lerpFactor;
+                    this.currentPitch += (this.targetPitch - this.currentPitch) * lerpFactor;
+
+                    this.camera.rotation.y += this.currentYaw;
+                    this.camera.rotation.x += this.currentPitch;
+                }
+
+                // アップロード画像の浮遊アニメーション＆距離フェード
+                this.uploadedImages.forEach(mesh => {
+                    mesh.position.y = mesh.userData.initialY + Math.sin(this.time + mesh.userData.randomOffset) * 2.0;
+                    
+                    // 距離に応じたフェードイン（前方200ユニットから見え始め、100ユニットで完全表示）
+                    const dist = this.boatZ - mesh.position.z;
+                    const fadeStart = 250;
+                    const fadeEnd = 100;
+                    let opacity = 0;
+                    if (dist > fadeStart) opacity = 0;
+                    else if (dist < fadeEnd) opacity = 1;
+                    else { const t = (fadeStart - dist) / (fadeStart - fadeEnd); opacity = t * t; }
+                    mesh.material.opacity = opacity;
+                    mesh.visible = opacity > 0;
+                });
+
+
+
+                this.materials.forEach(mat => {
+                    mat.uniforms.uTime.value = this.time;
+                });
+
+                // 光の道の雪トランジション更新
+                if (this.lightRoadMaterial) {
+                    this.lightRoadMaterial.uniforms.uBoatZ.value = this.boatZ;
+                }
+
+                // 紫陽花の季節遷移 (青紫→緑→黄)
+                if (this.hydrangeaMaterial) {
+                    this.hydrangeaMaterial.uniforms.uBoatZ.value = this.boatZ;
+                }
+
+                // 雨パーティクルの季節遷移
+                if (this.rainMaterialForColor) {
+                    this.rainMaterialForColor.uniforms.uBoatZ.value = this.boatZ;
+                }
+
+                if (this.water) {
+                    this.water.material.uniforms['time'].value += deltaTime;
+                }
+
+                // --- DYNAMIC FOG & BACKGROUND (Section Focus) ---
+                this.updateFogDynamics();
+
+                // Rotate Moon & Neon Pulse
+                if (this.moonMesh) {
+                    this.moonMesh.rotation.y += 0.002;
+                    this.moonMesh.rotation.x += 0.001;
+
+                    // Neon pulsing effect
+                    const pulse = 0.5 + 0.5 * Math.sin(this.time * 3.0);
+                    this.moonMesh.material.opacity = 0.4 + pulse * 0.4;
+                }
+
+                // --- Zone Visibility Control (Gradual Fade-in) ---
+                // クリスマスツリー: 光の道を進むにつれて0%から100%へ滑らかにフェードイン
+                if (this.xmasTreeMesh && this.xmasTreeMaterial) {
+                    const treeZone = Z_POS.WINTER - 200;
+                    const fadeStart = treeZone + 600; // フェード開始 (遠くから)
+                    const fadeEnd = treeZone + 50;    // 完全表示 (近づいたら)
+
+                    let opacity = 0;
+                    if (this.boatZ > fadeStart) {
+                        opacity = 0;
+                        this.xmasTreeMesh.visible = false;
+                    } else if (this.boatZ < fadeEnd) {
+                        opacity = 1.0;
+                        this.xmasTreeMesh.visible = true;
+                    } else {
+                        this.xmasTreeMesh.visible = true;
+                        // 0から1への滑らかなトランジション (二乗イージング)
+                        const t = (fadeStart - this.boatZ) / (fadeStart - fadeEnd);
+                        opacity = t * t; // 最初はほんのり、後から急速に現れる
+                    }
+                    this.xmasTreeMaterial.uniforms.uOpacity.value = opacity;
+                }
+
+                // 雨セクション: 桜セクション終盤から徐々にフェードイン
+                if (this.rainParticles && this.rainMaterialForColor) {
+                    const rainZone = Z_POS.RAIN;
+                    const fadeStart = rainZone + 250;
+                    const fadeEnd = rainZone + 50;
+
+                    let opacity = 0;
+                    if (this.boatZ > fadeStart) {
+                        opacity = 0;
+                        this.rainParticles.visible = false;
+                    } else if (this.boatZ < fadeEnd) {
+                        opacity = 1;
+                        this.rainParticles.visible = true;
+                    } else {
+                        this.rainParticles.visible = true;
+                        const t = (fadeStart - this.boatZ) / (fadeStart - fadeEnd);
+                        opacity = t * t;
+                    }
+                    this.rainMaterialForColor.uniforms.uOpacity.value = opacity;
+                }
+
+                // 花火セクション: 距離に応じて徐々にフェードイン
+                if (this.fireworkMaterials && this.fireworkMaterials.length > 0) {
+                    const fadeStart = Z_POS.RAIN + 50;
+                    const fadeEnd = Z_POS.SUMMER + 200;
+                    let opacity = 0;
+                    if (this.boatZ > fadeStart) opacity = 0;
+                    else if (this.boatZ < fadeEnd) opacity = 1;
+                    else { const t = (fadeStart - this.boatZ) / (fadeStart - fadeEnd); opacity = t * t; }
+                    this.fireworkMaterials.forEach(mat => { mat.uniforms.uOpacity.value = opacity; });
+                }
+
+                // 紫陽花: 桜から雨へのフェードイン
+                if (this.hydrangeaMaterial) {
+                    const fadeStart = Z_POS.RAIN + 250;
+                    const fadeEnd = Z_POS.RAIN + 50;
+                    let opacity = 0;
+                    if (this.boatZ > fadeStart) opacity = 0;
+                    else if (this.boatZ < fadeEnd) opacity = 1;
+                    else { const t = (fadeStart - this.boatZ) / (fadeStart - fadeEnd); opacity = t * t; }
+                    this.hydrangeaMaterial.uniforms.uOpacity.value = opacity;
+                    if (this.hydrangeaMesh) this.hydrangeaMesh.visible = opacity > 0;
+                }
+
+                // 海水しぶき: 雨から夏へのフェードイン
+                if (this.seasprayMaterial) {
+                    const fadeStart = Z_POS.RAIN - 100;
+                    const fadeEnd = Z_POS.SUMMER + 100;
+                    let opacity = 0;
+                    if (this.boatZ > fadeStart) opacity = 0;
+                    else if (this.boatZ < fadeEnd) opacity = 1;
+                    else { const t = (fadeStart - this.boatZ) / (fadeStart - fadeEnd); opacity = t * t; }
+                    this.seasprayMaterial.uniforms.uOpacity.value = opacity;
+                    if (this.seasprayMesh) this.seasprayMesh.visible = opacity > 0;
+                }
+
+                // 秋の紅葉: 夏から秋へのフェードイン
+                if (this.autumnMaterial) {
+                    const fadeStart = Z_POS.SUMMER + 50;
+                    const fadeEnd = Z_POS.AUTUMN + 100;
+                    let opacity = 0;
+                    if (this.boatZ > fadeStart) opacity = 0;
+                    else if (this.boatZ < fadeEnd) opacity = 1;
+                    else { const t = (fadeStart - this.boatZ) / (fadeStart - fadeEnd); opacity = t * t; }
+                    this.autumnMaterial.uniforms.uOpacity.value = opacity;
+                    if (this.autumnMesh) this.autumnMesh.visible = opacity > 0;
+                }
+
+                // 鳥居・月・雲: 秋セクションへのフェードイン
+                if (this.toriiMaterial) {
+                    const fadeStart = Z_POS.AUTUMN + 300;
+                    const fadeEnd = Z_POS.AUTUMN - 100;
+                    let opacity = 0;
+                    if (this.boatZ > fadeStart) opacity = 0;
+                    else if (this.boatZ < fadeEnd) opacity = 1;
+                    else { const t = (fadeStart - this.boatZ) / (fadeStart - fadeEnd); opacity = t * t; }
+                    this.toriiMaterial.uniforms.uOpacity.value = opacity;
+                    if (this.toriiMesh) this.toriiMesh.visible = opacity > 0;
+                    if (this.moonMesh) { this.moonMesh.visible = opacity > 0; this.moonMesh.material.opacity = opacity * 0.85; }
+                    if (this.cloudMaterial) this.cloudMaterial.uniforms.uOpacity.value = opacity;
+                    if (this.cloudMesh) this.cloudMesh.visible = opacity > 0;
+                }
+
+                // ランタン: 秋からランタンへのフェードイン
+                if (this.lanternMaterial) {
+                    const fadeStart = Z_POS.AUTUMN - 200;
+                    const fadeEnd = Z_POS.LANTERN + 200;
+                    let opacity = 0;
+                    if (this.boatZ > fadeStart) opacity = 0;
+                    else if (this.boatZ < fadeEnd) opacity = 1;
+                    else { const t = (fadeStart - this.boatZ) / (fadeStart - fadeEnd); opacity = t * t; }
+                    this.lanternMaterial.uniforms.uOpacity.value = opacity;
+                    if (this.lanternMesh) this.lanternMesh.visible = opacity > 0;
+                }
+
+                // 光の道: ランタンから光の道へのフェードイン
+                if (this.lightRoadMaterial) {
+                    const fadeStart = Z_POS.LANTERN + 50;
+                    const fadeEnd = Z_POS.LIGHTROAD + 100;
+                    let opacity = 0;
+                    if (this.boatZ > fadeStart) opacity = 0;
+                    else if (this.boatZ < fadeEnd) opacity = 1;
+                    else { const t = (fadeStart - this.boatZ) / (fadeStart - fadeEnd); opacity = t * t; }
+                    this.lightRoadMaterial.uniforms.uOpacity.value = opacity;
+                }
+
+                // 雪: 光の道から冬へのフェードイン
+                if (this.winterMaterial) {
+                    const fadeStart = Z_POS.LIGHTROAD - 100;
+                    const fadeEnd = Z_POS.WINTER + 100;
+                    let opacity = 0;
+                    if (this.boatZ > fadeStart) opacity = 0;
+                    else if (this.boatZ < fadeEnd) opacity = 1;
+                    else { const t = (fadeStart - this.boatZ) / (fadeStart - fadeEnd); opacity = t * t; }
+                    this.winterMaterial.uniforms.uOpacity.value = opacity;
+                    if (this.winterMesh) this.winterMesh.visible = opacity > 0;
+                }
+
+                // Finale Image Fade In & Glow Logic
+                if (this.finaleMesh) {
+                    const stopZ = Z_POS.FINALE + 200;
+                    // Start fading clearly AFTER Passing Winter Tree (Winter - 300)
+                    const fadeStart = Z_POS.WINTER - 300;
+                    const fadeEnd = stopZ;
+
+                    // Distance based fade
+                    let t = (this.boatZ - fadeStart) / (fadeEnd - fadeStart);
+                    t = Math.max(0, Math.min(1, t));
+
+                    if (this.isFinaleStopped) {
+                        // Stopped: Show clearly (Reduced brightness 0.7)
+                        this.finaleMesh.material.color.setScalar(0.7);
+                        this.finaleMesh.material.opacity = 1.0;
+                        this.finaleMesh.visible = true;
+                    } else {
+                        // Approaching: Fade in
+                        this.finaleMesh.material.color.setScalar(0.7);
+                        this.finaleMesh.material.opacity = t;
+                        this.finaleMesh.visible = (t > 0);
+                    }
+
+                    // Spotlights are ignored (kept off)
+                }
+
+                this.updateUI(this.boatZ);
+                this.composer.render();
+            }
+
+            // 螺旋軌道計算 (Shaderと同期)
+            updateFogDynamics() {
+                const z = this.boatZ;
+                let targetColor;
+                let targetDensity = 0.009;
+
+                if (z > 100) {
+                    targetColor = new THREE.Color(0x100508);
+                } else if (z > -100) {
+                    targetColor = new THREE.Color(0x100505); // Spring
+                } else if (z > -450) {
+                    targetColor = new THREE.Color(0x050812); // Rain
+                } else if (z > -800) {
+                    targetColor = new THREE.Color(0x050510); // Summer
+                } else if (z > -1500) {
+                    targetColor = new THREE.Color(0x000000); // Autumn
+                } else if (z > -1850) {
+                    // ランタンゾーン: 温かいオレンジ色の大気 (画像参考)
+                    // ランタンの光が空気全体を染める効果
+                    targetColor = new THREE.Color(0x2a1508); // 暖かいアンバー/オレンジ
+                    targetDensity = 0.010; // 柔らかい霧
+                } else if (z > -2100) {
+                    // 光の道: オレンジから青へのグラデーション
+                    const t = (-1850 - z) / 250.0; // 0 → 1
+                    const orange = new THREE.Color(0x2a1508);
+                    const blue = new THREE.Color(0x050a15);
+                    targetColor = orange.lerp(blue, t);
+                    targetDensity = 0.010 - t * 0.002; // 徐々に晴れる
+                } else {
+                    targetColor = new THREE.Color(0x050a15); // Winter
+                    targetDensity = 0.008; // クリアな空気
+                }
+
+                // Smooth transition
+                this.currentFogColor.lerp(targetColor, 0.02);
+                this.scene.fog.color.copy(this.currentFogColor);
+                this.scene.background.copy(this.currentFogColor);
+
+                // 霧密度も滑らかに変化
+                this.scene.fog.density += (targetDensity - this.scene.fog.density) * 0.02;
+            }
+
+            getSpringPath(z) {
+                const helixFreq = 0.015;
+                const helixRadius = 15.0; // 半径縮小
+                const x = Math.cos(z * helixFreq) * helixRadius;
+                const y = Math.sin(z * helixFreq) * helixRadius + 20.0;
+                return { x, y };
+            }
+
+            onResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.composer.setSize(window.innerWidth, window.innerHeight);
+                this.materials.forEach(mat => {
+                    if (mat.uniforms && mat.uniforms.uPixelRatio) {
+                        mat.uniforms.uPixelRatio.value = this.renderer.getPixelRatio();
+                    }
+                });
+            }
+        }
+
+        window.app = new App();
+
+    </script>
+</body>
+
+</html>
